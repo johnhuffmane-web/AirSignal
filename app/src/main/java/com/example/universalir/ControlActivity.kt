@@ -46,7 +46,7 @@ class ControlActivity : AppCompatActivity() {
     private fun renderLampControls(container: LinearLayout) {
         val label = TextView(this).apply {
             text = "Dimmable & Kelvin Light Controls"
-            textSize = 16.sp
+            textSize = 16f
             setPadding(0, 0, 0, 16)
         }
         container.addView(label)
@@ -83,7 +83,7 @@ class ControlActivity : AppCompatActivity() {
     private fun renderAcControls(container: LinearLayout) {
         val label = TextView(this).apply {
             text = "Air Conditioner State Panel"
-            textSize = 16.sp
+            textSize = 16f
             setPadding(0, 0, 0, 16)
         }
         container.addView(label)

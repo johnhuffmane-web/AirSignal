@@ -1,0 +1,13 @@
+R_DEF: Internal format may change without notice
+local
+id applianceTypeSpinner
+id controlsContainerLayout
+id deviceListView
+id deviceNameInput
+id deviceTitleTextView
+id saveDeviceButton
+id scanButton
+id statusTextView
+layout activity_control
+layout activity_main
+layout dailog_save_device

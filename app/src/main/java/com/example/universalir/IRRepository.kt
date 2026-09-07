@@ -7,14 +7,14 @@ import android.util.Log
 class IrRepository(context: Context) {
 
     // Retrieve the system's Consumer IR Service
-    private val irManager: ConsumerIrManager =
-        context.getSystemService(Context.CONSUMER_IR_SERVICE) as ConsumerIrManager
+    private val irManager: ConsumerIrManager? =
+        context.getSystemService(Context.CONSUMER_IR_SERVICE) as? ConsumerIrManager
 
     /**
      * Checks if the device actually has a physical IR emitter.
      */
     val hasEmitter: Boolean
-        get() = irManager.hasEmitter()
+        get() = irManager?.hasIrEmitter() == true
 
     /**
      * Transmits a raw IR signal pattern.
@@ -28,7 +28,7 @@ class IrRepository(context: Context) {
         }
 
         try {
-            irManager.transmit(frequency, pattern)
+            irManager?.transmit(frequency, pattern)
             Log.d("IrRepository", "IR Signal successfully transmitted at ${frequency}Hz")
         } catch (e: Exception) {
             Log.e("IrRepository", "Failed to transmit IR signal", e)

@@ -1,0 +1,14 @@
+[
+    {
+        "merged": "com.example.universalir.app-debug-31:/layout_activity_control.xml.flat",
+        "source": "com.example.universalir.app-main-33:/layout/activity_control.xml"
+    },
+    {
+        "merged": "com.example.universalir.app-debug-31:/layout_dailog_save_device.xml.flat",
+        "source": "com.example.universalir.app-main-33:/layout/dailog_save_device.xml"
+    },
+    {
+        "merged": "com.example.universalir.app-debug-31:/layout_activity_main.xml.flat",
+        "source": "com.example.universalir.app-main-33:/layout/activity_main.xml"
+    }
+]

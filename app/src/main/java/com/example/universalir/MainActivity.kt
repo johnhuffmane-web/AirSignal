@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSaveDialog(workingPattern: IntArray) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_save_device, null)
+        val dialogView = layoutInflater.inflate(R.layout.dailog_save_device, null)
         val nameInput = dialogView.findViewById<EditText>(R.id.deviceNameInput)
         val spinner = dialogView.findViewById<Spinner>(R.id.applianceTypeSpinner)
 
