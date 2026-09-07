@@ -222,11 +222,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             val selectedType = ApplianceType.valueOf(spinner.selectedItem.toString())
+            val commandMap = createCommandMapForType(selectedType, matchedCandidate.pattern)
+
             val newAppliance = Appliance(
                 id = UUID.randomUUID().toString(),
                 name = customName,
                 type = selectedType,
-                commandMap = mapOf("power_toggle" to matchedCandidate.pattern)
+                commandMap = commandMap
             )
 
             savedDevicesList.add(newAppliance)
@@ -238,5 +240,33 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    private fun createCommandMapForType(type: ApplianceType, matchedPattern: IntArray): Map<String, IntArray> {
+        val map = mutableMapOf<String, IntArray>()
+        map["power_toggle"] = matchedPattern
+
+        when (type) {
+            ApplianceType.LAMP -> {
+                map["color_temp_cycle"] = IrCodeDatabase.necToRawPattern(0x00FFE01FL)
+                map["brightness_up"] = IrCodeDatabase.necToRawPattern(0x00FF629DL)
+                map["brightness_down"] = IrCodeDatabase.necToRawPattern(0x00FFA25DL)
+                map["warm_white"] = IrCodeDatabase.necToRawPattern(0x00FF22DDL)
+                map["cool_white"] = IrCodeDatabase.necToRawPattern(0x00FFC23DL)
+                map["night_light"] = IrCodeDatabase.necToRawPattern(0x00FFA857L)
+            }
+            ApplianceType.AC -> {
+                map["temp_up"] = IrCodeDatabase.necToRawPattern(0x00FF609FL)
+                map["temp_down"] = IrCodeDatabase.necToRawPattern(0x00FFE01FL)
+            }
+            ApplianceType.TV, ApplianceType.SOUNDBAR, ApplianceType.MEDIA_PLAYER -> {
+                map["vol_up"] = IrCodeDatabase.necToRawPattern(0x00FFB04FL)
+                map["vol_down"] = IrCodeDatabase.necToRawPattern(0x00FFF00FL)
+                map["ch_up"] = IrCodeDatabase.necToRawPattern(0x00FF08F7L)
+                map["ch_down"] = IrCodeDatabase.necToRawPattern(0x00FF8877L)
+            }
+            else -> {}
+        }
+        return map
     }
 }

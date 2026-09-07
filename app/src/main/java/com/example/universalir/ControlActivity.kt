@@ -1,5 +1,6 @@
 package com.example.universalir
 
+import android.graphics.Typeface
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -45,82 +46,173 @@ class ControlActivity : AppCompatActivity() {
 
     private fun renderLampControls(container: LinearLayout) {
         val label = TextView(this).apply {
-            text = "Dimmable & Kelvin Light Controls"
-            textSize = 16f
+            text = "3-Color Kelvin & Dimmer Controls"
+            textSize = 18f
+            setTypeface(null, Typeface.BOLD)
             setPadding(0, 0, 0, 16)
         }
         container.addView(label)
 
         // Power Toggle Button
         val powerBtn = Button(this).apply {
-            text = "Power Toggle"
+            text = "Power On / Off"
             setOnClickListener { sendCommand("power_toggle") }
         }
         container.addView(powerBtn)
 
-        // Brightness Slider label
-        val sliderLabel = TextView(this).apply { text = "Brightness Level" }
-        container.addView(sliderLabel)
-
-        // Brightness Slider
-        val seekBar = SeekBar(this).apply {
-            max = 100
-            progress = 50
-            setPadding(0, 20, 0, 40)
+        // Color Temperature (3-Color Kelvin Switch: Warm / Natural / Cool)
+        val kelvinBtn = Button(this).apply {
+            text = "Switch Light Color (3000K / 4000K / 6500K)"
+            setOnClickListener { sendCommand("color_temp_cycle") }
         }
-        container.addView(seekBar)
+        container.addView(kelvinBtn)
 
-        val applyBrightnessBtn = Button(this).apply {
-            text = "Apply Brightness Level"
-            setOnClickListener {
-                Toast.makeText(this@ControlActivity, "Set brightness to ${seekBar.progress}%", Toast.LENGTH_SHORT).show()
-                sendCommand("power_toggle") // Maps to specific PWM/IR payload in production
+        // Brightness Controls Row
+        val brightLabel = TextView(this).apply {
+            text = "Brightness Adjustment:"
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 16, 0, 8)
+        }
+        container.addView(brightLabel)
+
+        val brightLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        val brightUpBtn = Button(this).apply {
+            text = "Brightness +"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = 8
             }
+            setOnClickListener { sendCommand("brightness_up") }
         }
-        container.addView(applyBrightnessBtn)
+        val brightDownBtn = Button(this).apply {
+            text = "Brightness -"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { sendCommand("brightness_down") }
+        }
+        brightLayout.addView(brightUpBtn)
+        brightLayout.addView(brightDownBtn)
+        container.addView(brightLayout)
+
+        // Color Temperature Shift Row (Warm / Cool)
+        val tempLabel = TextView(this).apply {
+            text = "Kelvin Warm / Cool Shift:"
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 16, 0, 8)
+        }
+        container.addView(tempLabel)
+
+        val tempLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        val warmBtn = Button(this).apply {
+            text = "Warmer (3000K)"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = 8
+            }
+            setOnClickListener { sendCommand("warm_white") }
+        }
+        val coolBtn = Button(this).apply {
+            text = "Cooler (6500K)"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { sendCommand("cool_white") }
+        }
+        tempLayout.addView(warmBtn)
+        tempLayout.addView(coolBtn)
+        container.addView(tempLayout)
+
+        // Night Light Mode Button
+        val nightBtn = Button(this).apply {
+            text = "Night Light / Eco Mode"
+            setOnClickListener { sendCommand("night_light") }
+        }
+        container.addView(nightBtn)
     }
 
     private fun renderAcControls(container: LinearLayout) {
         val label = TextView(this).apply {
-            text = "Air Conditioner State Panel"
-            textSize = 16f
+            text = "Air Conditioner Controls"
+            textSize = 18f
+            setTypeface(null, Typeface.BOLD)
             setPadding(0, 0, 0, 16)
         }
         container.addView(label)
 
         val powerBtn = Button(this).apply {
-            text = "AC Power On/Off"
+            text = "AC Power On / Off"
             setOnClickListener { sendCommand("power_toggle") }
         }
         container.addView(powerBtn)
 
-        val tempLabel = TextView(this).apply { text = "Target Temperature: 24°C" }
+        val tempLabel = TextView(this).apply {
+            text = "Temperature Adjustment:"
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 16, 0, 8)
+        }
         container.addView(tempLabel)
 
+        val tempLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
         val tempUpBtn = Button(this).apply {
-            text = "Temp + (Up)"
-            setOnClickListener { Toast.makeText(this@ControlActivity, "Temp Increased", Toast.LENGTH_SHORT).show() }
+            text = "Temp +"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = 8
+            }
+            setOnClickListener { sendCommand("temp_up") }
         }
-        container.addView(tempUpBtn)
-
         val tempDownBtn = Button(this).apply {
-            text = "Temp - (Down)"
-            setOnClickListener { Toast.makeText(this@ControlActivity, "Temp Decreased", Toast.LENGTH_SHORT).show() }
+            text = "Temp -"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { sendCommand("temp_down") }
         }
-        container.addView(tempDownBtn)
+        tempLayout.addView(tempUpBtn)
+        tempLayout.addView(tempDownBtn)
+        container.addView(tempLayout)
     }
 
     private fun renderStandardPowerControls(container: LinearLayout) {
+        val label = TextView(this).apply {
+            text = "Device Controls"
+            textSize = 18f
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 0, 0, 16)
+        }
+        container.addView(label)
+
         val powerBtn = Button(this).apply {
-            text = "Power Toggle / Action"
+            text = "Power On / Off"
             setOnClickListener { sendCommand("power_toggle") }
         }
         container.addView(powerBtn)
+
+        val volLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 16, 0, 0)
+        }
+        val volUpBtn = Button(this).apply {
+            text = "Volume +"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = 8
+            }
+            setOnClickListener { sendCommand("vol_up") }
+        }
+        val volDownBtn = Button(this).apply {
+            text = "Volume -"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { sendCommand("vol_down") }
+        }
+        volLayout.addView(volUpBtn)
+        volLayout.addView(volDownBtn)
+        container.addView(volLayout)
     }
 
     private fun sendCommand(actionKey: String) {
-        val pattern = appliance.commandMap[actionKey] ?: intArrayOf(9000, 4500, 560, 560)
+        val pattern = appliance.commandMap[actionKey]
+            ?: appliance.commandMap["power_toggle"]
+            ?: intArrayOf(9000, 4500, 560, 560)
+            
         irRepository.transmit(38000, pattern)
-        Toast.makeText(this, "Sent command for ${appliance.name}!", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Sent ${actionKey.replace('_', ' ')} command", Toast.LENGTH_SHORT).show()
     }
 }
