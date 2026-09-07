@@ -58,7 +58,7 @@ class ControlActivity : AppCompatActivity() {
 
         // Protocol / Address Selector
         val protocolLabel = TextView(this).apply {
-            text = "Fine-Tune Protocol / IR Address:"
+            text = "Fine-Tune Protocol / IR Address Variant:"
             setTypeface(null, Typeface.BOLD)
             setPadding(0, 0, 0, 4)
         }
@@ -66,8 +66,11 @@ class ControlActivity : AppCompatActivity() {
 
         val protocolSpinner = Spinner(this)
         val protocols = listOf(
+            "Protocol 2B: Lazada CCT Lamp (0x00FF - Recommended)",
+            "Protocol 2A: Standard 24-Key RGB (0x00FF)",
+            "Protocol 2C: CCT 21-Key Controller (0x00FF)",
+            "Protocol 2D: CCT Driver Pro (0x00FF)",
             "Protocol 1: Lazada Nordic Lamp (0x00EF)",
-            "Protocol 2: Standard 24-Key RGB (0x00FF)",
             "Protocol 3: CCT 3-Color Driver (0x0000)",
             "Protocol 4: Mini LED Controller (0x00BF)",
             "Protocol 5: 44-Key LED Controller (0x00F7)",
@@ -77,25 +80,33 @@ class ControlActivity : AppCompatActivity() {
         protocolSpinner.adapter = adapter
         container.addView(protocolSpinner)
 
-        val protocolAddresses = listOf(
-            0x00EF0000L,
-            0x00FF0000L,
-            0x00000000L,
-            0x00BF0000L,
-            0x00F70000L,
-            0x708F0000L
-        )
-
         protocolSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val selectedAddress = protocolAddresses[position]
-                val updatedMap = IrCodeDatabase.getLampProtocolMap(selectedAddress)
+                val updatedMap = when (position) {
+                    0 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 1) // Lazada CCT
+                    1 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 0) // Standard 24-Key
+                    2 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 2) // CCT 21-Key
+                    3 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 3) // CCT Driver Pro
+                    4 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00EF0000L, 0)
+                    5 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00000000L, 0)
+                    6 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00BF0000L, 0)
+                    7 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00F70000L, 0)
+                    8 -> IrCodeDatabase.getLampProtocolMapForVariant(0x708F0000L, 0)
+                    else -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 1)
+                }
                 appliance = appliance.copy(commandMap = updatedMap)
                 updateDeviceStorage(appliance)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+
+        // Night Light Mode Button (Verified Working!)
+        val nightBtn = Button(this).apply {
+            text = "Night Light / Eco Mode (Verified)"
+            setOnClickListener { sendCommand("night_light") }
+        }
+        container.addView(nightBtn)
 
         // Power Toggle Button
         val powerBtn = Button(this).apply {
@@ -164,13 +175,6 @@ class ControlActivity : AppCompatActivity() {
         tempLayout.addView(warmBtn)
         tempLayout.addView(coolBtn)
         container.addView(tempLayout)
-
-        // Night Light Mode Button
-        val nightBtn = Button(this).apply {
-            text = "Night Light / Eco Mode"
-            setOnClickListener { sendCommand("night_light") }
-        }
-        container.addView(nightBtn)
     }
 
     private fun renderAcControls(container: LinearLayout) {
