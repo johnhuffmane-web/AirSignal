@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/scanDeviceTypeTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Scanning for Lamp..."
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/scanProgressText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Testing Code 1 of 4 (Frequency: 38,000 Hz)"
+        android:textSize="14sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginBottom="12dp" />
+
+    <ProgressBar
+        android:id="@+id/scanProgressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="100"
+        android:progress="25"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/scanInstructionText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Watch your device carefully. Did it turn on, off, or react?"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginBottom="20dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/stopScanButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Stop Scanning"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/deviceReactedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device Reacted! (Save)" />
+
+    </LinearLayout>
+
+</LinearLayout>
