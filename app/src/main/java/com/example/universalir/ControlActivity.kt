@@ -2,8 +2,11 @@ package com.example.universalir
 
 import android.graphics.Typeface
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.universalir.hardware.IrCodeDatabase
 import com.example.universalir.hardware.IrRepository
@@ -69,75 +72,50 @@ class ControlActivity : AppCompatActivity() {
         }
         container.addView(label)
 
-        // Protocol / Address Selector
-        val protocolLabel = TextView(this).apply {
-            text = "Fine-Tune Protocol / IR Address Variant:"
+        // Single-Click Full Command Byte Auto-Scanner (Address 0x00FF)
+        val fullScanBtn = Button(this).apply {
+            text = "⚡ Auto-Scan All Bytes for Power & Color Switch (Address 0x00FF)"
+            setOnClickListener { startFullByteAutoScan() }
+        }
+        container.addView(fullScanBtn)
+
+        // Verified Dimmer Controls
+        val dimmerLabel = TextView(this).apply {
+            text = "Verified Dimmer States (Address 0x00FF LSB):"
             setTypeface(null, Typeface.BOLD)
-            setPadding(0, 0, 0, 4)
+            setPadding(0, 16, 0, 8)
         }
-        container.addView(protocolLabel)
+        container.addView(dimmerLabel)
 
-        val protocolSpinner = Spinner(this)
-        val protocols = listOf(
-            "Protocol 2B: Lazada CCT Lamp (0x00FF - LSB Official)",
-            "Protocol 2A: Standard 24-Key RGB (0x00FF)",
-            "Protocol 2C: CCT 21-Key Controller (0x00FF)",
-            "Protocol 2D: CCT Driver Pro (0x00FF)",
-            "Protocol 1: Lazada Nordic Lamp (0x00EF)",
-            "Protocol 3: CCT 3-Color Driver (0x0000)",
-            "Protocol 4: Mini LED Controller (0x00BF)",
-            "Protocol 5: 44-Key LED Controller (0x00F7)",
-            "Protocol 6: Tuya Smart IR (0x708F)"
-        )
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, protocols)
-        protocolSpinner.adapter = adapter
-        container.addView(protocolSpinner)
-
-        protocolSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val updatedMap = when (position) {
-                    0 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 1)
-                    1 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 0)
-                    2 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 2)
-                    3 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 3)
-                    4 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00EF0000L, 0)
-                    5 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00000000L, 0)
-                    6 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00BF0000L, 0)
-                    7 -> IrCodeDatabase.getLampProtocolMapForVariant(0x00F70000L, 0)
-                    8 -> IrCodeDatabase.getLampProtocolMapForVariant(0x708F0000L, 0)
-                    else -> IrCodeDatabase.getLampProtocolMapForVariant(0x00FF0000L, 1)
-                }
-                appliance = appliance.copy(commandMap = updatedMap)
-                updateDeviceStorage(appliance)
+        val maxBtn = Button(this).apply {
+            text = "100% Max Brightness (0x18 Verified)"
+            setOnClickListener {
+                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x18)
+                irRepository.transmit(38000, raw)
+                Toast.makeText(this@ControlActivity, "Sent 100% Max Brightness", Toast.LENGTH_SHORT).show()
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+        container.addView(maxBtn)
 
-        // Night Light Mode Button
-        val nightBtn = Button(this).apply {
-            text = "Night Light / Low Brightness (5%)"
-            setOnClickListener { sendCommand("night_light") }
-        }
-        container.addView(nightBtn)
-
-        // Brightness + Button (Verified Working!)
-        val brightMaxBtn = Button(this).apply {
-            text = "Max Brightness + (100% Verified)"
-            setOnClickListener { sendCommand("brightness_up") }
-        }
-        container.addView(brightMaxBtn)
-
-        // Medium Brightness Button (Verified Working!)
-        val brightMedBtn = Button(this).apply {
-            text = "Medium Brightness (50% Verified)"
+        val medBtn = Button(this).apply {
+            text = "50% Medium Brightness (0x1C Verified)"
             setOnClickListener {
                 val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x1C)
                 irRepository.transmit(38000, raw)
                 Toast.makeText(this@ControlActivity, "Sent 50% Medium Brightness", Toast.LENGTH_SHORT).show()
             }
         }
-        container.addView(brightMedBtn)
+        container.addView(medBtn)
+
+        val lowBtn = Button(this).apply {
+            text = "5% Low / Eco Mode (0x15 Verified)"
+            setOnClickListener {
+                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x15)
+                irRepository.transmit(38000, raw)
+                Toast.makeText(this@ControlActivity, "Sent 5% Low Brightness", Toast.LENGTH_SHORT).show()
+            }
+        }
+        container.addView(lowBtn)
 
         // Power Toggle Button
         val powerBtn = Button(this).apply {
@@ -153,168 +131,183 @@ class ControlActivity : AppCompatActivity() {
         }
         container.addView(kelvinBtn)
 
-        // Multi-Address Header Test Suite (For Power On/Off & Color Switch)
-        val addressMatrixLabel = TextView(this).apply {
-            text = "Multi-Address Test Matrix (Find Power ON/OFF & 3-Color Switch):"
+        // Multi-Address Header Test Suite
+        val autoScanLabel = TextView(this).apply {
+            text = "Find Power ON/OFF & Color Switch across Secondary Addresses:"
             setTypeface(null, Typeface.BOLD)
             setPadding(0, 20, 0, 8)
         }
-        container.addView(addressMatrixLabel)
+        container.addView(autoScanLabel)
 
-        val multiAddressList = listOf(
-            "Address 0x00EF (Lazada Nordic Lamp)" to 0x00EF,
-            "Address 0x00BF (Mini LED Controller)" to 0x00BF,
-            "Address 0x0000 (CCT 3-Color Driver)" to 0x0000,
-            "Address 0x708F (Tuya Smart IR Hub)" to 0x708F,
-            "Address 0x00F7 (44-Key LED Controller)" to 0x00F7
-        )
-
-        for ((addrName, addrValue) in multiAddressList) {
-            val sectionHeader = TextView(this).apply {
-                text = addrName
-                setTypeface(null, Typeface.BOLD)
-                setPadding(0, 12, 0, 4)
-            }
-            container.addView(sectionHeader)
-
-            // Row 1: Power ON & Power OFF
-            val powerRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            val powerOnBtn = Button(this).apply {
-                text = "Power ON (0x02)"
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
-                setOnClickListener {
-                    val raw = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x02)
-                    irRepository.transmit(38000, raw)
-                    Toast.makeText(this@ControlActivity, "Sent $addrName Power ON", Toast.LENGTH_SHORT).show()
-                }
-            }
-            val powerOffBtn = Button(this).apply {
-                text = "Power OFF (0x00)"
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
-                setOnClickListener {
-                    val raw = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x00)
-                    irRepository.transmit(38000, raw)
-                    Toast.makeText(this@ControlActivity, "Sent $addrName Power OFF", Toast.LENGTH_SHORT).show()
-                }
-            }
-            val savePowerBtn = Button(this).apply {
-                text = "Save Power"
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                setOnClickListener {
-                    val updated = appliance.commandMap.toMutableMap()
-                    updated["power_toggle"] = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x02)
-                    appliance = appliance.copy(commandMap = updated)
-                    updateDeviceStorage(appliance)
-                    Toast.makeText(this@ControlActivity, "Saved $addrName as Power Code!", Toast.LENGTH_SHORT).show()
-                }
-            }
-            powerRow.addView(powerOnBtn)
-            powerRow.addView(powerOffBtn)
-            powerRow.addView(savePowerBtn)
-            container.addView(powerRow)
-
-            // Row 2: Kelvin Color Switch & Warm White
-            val kelvinRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            val kelvinSwitchBtn = Button(this).apply {
-                text = "Kelvin Switch (0x1C)"
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
-                setOnClickListener {
-                    val raw = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x1C)
-                    irRepository.transmit(38000, raw)
-                    Toast.makeText(this@ControlActivity, "Sent $addrName Kelvin Switch", Toast.LENGTH_SHORT).show()
-                }
-            }
-            val warmWhiteBtn = Button(this).apply {
-                text = "Warm White (0x14)"
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
-                setOnClickListener {
-                    val raw = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x14)
-                    irRepository.transmit(38000, raw)
-                    Toast.makeText(this@ControlActivity, "Sent $addrName Warm White", Toast.LENGTH_SHORT).show()
-                }
-            }
-            val saveColorBtn = Button(this).apply {
-                text = "Save Color"
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                setOnClickListener {
-                    val updated = appliance.commandMap.toMutableMap()
-                    updated["color_temp_cycle"] = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x1C)
-                    appliance = appliance.copy(commandMap = updated)
-                    updateDeviceStorage(appliance)
-                    Toast.makeText(this@ControlActivity, "Saved $addrName as Color Switch!", Toast.LENGTH_SHORT).show()
-                }
-            }
-            kelvinRow.addView(kelvinSwitchBtn)
-            kelvinRow.addView(warmWhiteBtn)
-            kelvinRow.addView(saveColorBtn)
-            container.addView(kelvinRow)
+        val autoScanLayout = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val scanColorBtn = Button(this).apply {
+            text = "Scan Secondary Color Switch"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
+            setOnClickListener { startAutoScanForCommand("color_temp_cycle", 0x1C) }
         }
-
-        // BAIERDI 0x10–0x1F Block Test Suite
-        val baierdiMatrixLabel = TextView(this).apply {
-            text = "BAIERDI 0x10–0x1F Command Suite (Address 0x00FF LSB):"
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, 20, 0, 8)
+        val scanPowerBtn = Button(this).apply {
+            text = "Scan Secondary Power OFF"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { startAutoScanForCommand("power_toggle", 0x00) }
         }
-        container.addView(baierdiMatrixLabel)
+        autoScanLayout.addView(scanColorBtn)
+        autoScanLayout.addView(scanPowerBtn)
+        container.addView(autoScanLayout)
+    }
 
-        val baierdiBlock = listOf(
-            "0x10 (Dimmer -)" to 0x10,
-            "0x11 (Warm White 3000K)" to 0x11,
-            "0x12 (Power / CCT Switch)" to 0x12,
-            "0x13 (Cool White 6500K)" to 0x13,
-            "0x14 (Power Toggle / ON)" to 0x14,
-            "0x15 (Power OFF)" to 0x15,
-            "0x16 (Brightness +)" to 0x16,
-            "0x17 (Color Temp Cycle)" to 0x17,
-            "0x18 (Max Brightness - 100% Verified)" to 0x18,
-            "0x19 (50% Brightness)" to 0x19,
-            "0x1A (30% Warm Night)" to 0x1A,
-            "0x1B (Warmer Shift)" to 0x1B,
-            "0x1C (Medium Brightness - 50% Verified)" to 0x1C,
-            "0x1D (Cooler Shift)" to 0x1D,
-            "0x1E (30m Timer)" to 0x1E,
-            "0x1F (60m Timer)" to 0x1F
+    /**
+     * Auto-scans all command bytes (0x00 to 0x3F) on Address 0x00FF LSB
+     */
+    private fun startFullByteAutoScan() {
+        val byteList = listOf(
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+            0x10, 0x11, 0x12, 0x13, 0x14, 0x16, 0x17, 0x19, 0x1A, 0x1B, 0x1D, 0x1E, 0x1F,
+            0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x28, 0x2C, 0x30, 0x38, 0x3C, 0x40, 0x44, 0x48, 0x50, 0x60, 0x80, 0xA0, 0xB0, 0xC0, 0xD0, 0xE0, 0xF0
         )
+        var idx = 0
+        val handler = Handler(Looper.getMainLooper())
 
-        for ((name, cmdByte) in baierdiBlock) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            val testBtn = Button(this).apply {
-                text = name
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.3f).apply { marginEnd = 8 }
-                setOnClickListener {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_scanning_progress, null)
+        val titleText = dialogView.findViewById<TextView>(R.id.scanDeviceTypeTextView)
+        val progressText = dialogView.findViewById<TextView>(R.id.scanProgressText)
+        val progressBar = dialogView.findViewById<ProgressBar>(R.id.scanProgressBar)
+        val instructionText = dialogView.findViewById<TextView>(R.id.scanInstructionText)
+        val stopBtn = dialogView.findViewById<Button>(R.id.stopScanButton)
+        val matchBtn = dialogView.findViewById<Button>(R.id.deviceReactedButton)
+
+        titleText.text = "Auto-Scanning Command Bytes (Address 0x00FF)..."
+        progressBar.max = byteList.size
+        progressBar.progress = 1
+        matchBtn.text = "Device Reacted! (Save)"
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        var isScanning = true
+        val runnable = object : Runnable {
+            override fun run() {
+                if (!isScanning || isFinishing || isDestroyed) return
+                if (idx < byteList.size) {
+                    val cmdByte = byteList[idx]
                     val raw = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
                     irRepository.transmit(38000, raw)
-                    Toast.makeText(this@ControlActivity, "Sent $name", Toast.LENGTH_SHORT).show()
+
+                    progressBar.progress = idx + 1
+                    progressText.text = "Testing Byte ${idx + 1} of ${byteList.size} (0x${Integer.toHexString(cmdByte).uppercase()})"
+                    instructionText.text = "Watch your BAIERDI lamp! Did it turn OFF/ON or switch light colors?"
+
+                    idx++
+                    handler.postDelayed(this, 1800)
+                } else {
+                    instructionText.text = "Finished testing command bytes."
                 }
             }
-            val saveColorBtn = Button(this).apply {
-                text = "Save as Color"
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
-                setOnClickListener {
-                    val updated = appliance.commandMap.toMutableMap()
-                    updated["color_temp_cycle"] = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
-                    appliance = appliance.copy(commandMap = updated)
-                    updateDeviceStorage(appliance)
-                    Toast.makeText(this@ControlActivity, "Saved $name as Color Switch!", Toast.LENGTH_SHORT).show()
-                }
-            }
-            val savePowerBtn = Button(this).apply {
-                text = "Save Power"
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                setOnClickListener {
-                    val updated = appliance.commandMap.toMutableMap()
-                    updated["power_toggle"] = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
-                    appliance = appliance.copy(commandMap = updated)
-                    updateDeviceStorage(appliance)
-                    Toast.makeText(this@ControlActivity, "Saved $name as Power Code!", Toast.LENGTH_SHORT).show()
-                }
-            }
-            row.addView(testBtn)
-            row.addView(saveColorBtn)
-            row.addView(savePowerBtn)
-            container.addView(row)
         }
+
+        stopBtn.setOnClickListener {
+            isScanning = false
+            handler.removeCallbacksAndMessages(null)
+            dialog.dismiss()
+        }
+
+        matchBtn.setOnClickListener {
+            isScanning = false
+            handler.removeCallbacksAndMessages(null)
+            dialog.dismiss()
+
+            val matchedByte = if (idx > 0) byteList[idx - 1] else byteList[0]
+            val matchedHex = "0x${Integer.toHexString(matchedByte).uppercase()}"
+
+            val saveOptions = arrayOf("Save as Power ON/OFF Code", "Save as 3-Color Kelvin Switch Code", "Save as Warm White (3000K)")
+            AlertDialog.Builder(this@ControlActivity)
+                .setTitle("Match Found: Byte $matchedHex")
+                .setItems(saveOptions) { _, choice ->
+                    val updated = appliance.commandMap.toMutableMap()
+                    val key = when (choice) {
+                        0 -> "power_toggle"
+                        1 -> "color_temp_cycle"
+                        2 -> "warm_white"
+                        else -> "power_toggle"
+                    }
+                    updated[key] = IrCodeDatabase.necLsbToRawPattern(0x00, matchedByte)
+                    appliance = appliance.copy(commandMap = updated)
+                    updateDeviceStorage(appliance)
+                    Toast.makeText(this@ControlActivity, "Saved Byte $matchedHex as $key!", Toast.LENGTH_LONG).show()
+                }
+                .show()
+        }
+
+        dialog.show()
+        handler.post(runnable)
+    }
+
+    private fun startAutoScanForCommand(actionKey: String, cmdByte: Int) {
+        val addressList = listOf(0x00EF, 0x00BF, 0x0000, 0x708F, 0x00F7, 0x007F, 0x00DF, 0x10EF)
+        var idx = 0
+        val handler = Handler(Looper.getMainLooper())
+
+        val dialogView = layoutInflater.inflate(R.layout.dialog_scanning_progress, null)
+        val titleText = dialogView.findViewById<TextView>(R.id.scanDeviceTypeTextView)
+        val progressText = dialogView.findViewById<TextView>(R.id.scanProgressText)
+        val progressBar = dialogView.findViewById<ProgressBar>(R.id.scanProgressBar)
+        val instructionText = dialogView.findViewById<TextView>(R.id.scanInstructionText)
+        val stopBtn = dialogView.findViewById<Button>(R.id.stopScanButton)
+        val matchBtn = dialogView.findViewById<Button>(R.id.deviceReactedButton)
+
+        titleText.text = "Scanning Secondary Address Headers..."
+        progressBar.max = addressList.size
+        progressBar.progress = 1
+        matchBtn.text = "Found Reaction! (Save)"
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        var isScanning = true
+        val runnable = object : Runnable {
+            override fun run() {
+                if (!isScanning || isFinishing || isDestroyed) return
+                if (idx < addressList.size) {
+                    val addr = addressList[idx]
+                    val raw = IrCodeDatabase.necLsbToRawPattern(addr, cmdByte)
+                    irRepository.transmit(38000, raw)
+
+                    progressBar.progress = idx + 1
+                    progressText.text = "Testing Address ${idx + 1} of ${addressList.size} (0x${Integer.toHexString(addr).uppercase()})"
+                    instructionText.text = if (actionKey == "power_toggle") "Watch if lamp turns OFF or ON!" else "Watch if light color changes (Warm/White/Cool)!"
+
+                    idx++
+                    handler.postDelayed(this, 2000)
+                } else {
+                    instructionText.text = "Finished testing all secondary addresses."
+                }
+            }
+        }
+
+        stopBtn.setOnClickListener {
+            isScanning = false
+            handler.removeCallbacksAndMessages(null)
+            dialog.dismiss()
+        }
+
+        matchBtn.setOnClickListener {
+            isScanning = false
+            handler.removeCallbacksAndMessages(null)
+            dialog.dismiss()
+
+            val matchedAddr = if (idx > 0) addressList[idx - 1] else addressList[0]
+            val updated = appliance.commandMap.toMutableMap()
+            updated[actionKey] = IrCodeDatabase.necLsbToRawPattern(matchedAddr, cmdByte)
+            appliance = appliance.copy(commandMap = updated)
+            updateDeviceStorage(appliance)
+            Toast.makeText(this, "Saved Address 0x${Integer.toHexString(matchedAddr).uppercase()} for $actionKey!", Toast.LENGTH_LONG).show()
+        }
+
+        dialog.show()
+        handler.post(runnable)
     }
 
     private fun renderAcControls(container: LinearLayout) {

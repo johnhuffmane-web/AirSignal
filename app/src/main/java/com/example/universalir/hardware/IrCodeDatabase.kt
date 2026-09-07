@@ -90,6 +90,21 @@ object IrCodeDatabase {
     }
 
     /**
+     * Official LSB-first NEC Protocol raw pattern generator with continuous burst hold support.
+     */
+    fun necLsbRepeatPattern(address: Int, command: Int, repeatCount: Int = 3): IntArray {
+        val initial = necLsbToRawPattern(address, command)
+        val list = initial.toMutableList()
+        for (repeatIdx in 0 until repeatCount) {
+            list.add(42500) // 110ms frame gap space (~42,500µs)
+            list.add(9000)  // Repeat mark
+            list.add(2250)  // Repeat space
+            list.add(560)   // Repeat stop mark
+        }
+        return list.toIntArray()
+    }
+
+    /**
      * Generates a complete command map for CCT 3-Color Dimmable Lamps based on address header & variant.
      */
     fun getLampProtocolMapForVariant(addressHeader: Long, variantIndex: Int): Map<String, IntArray> {
@@ -99,8 +114,8 @@ object IrCodeDatabase {
             1 -> { // Variant B: Lazada CCT Lamp (BAIERDI Verified)
                 map["power_toggle"] = necLsbToRawPattern(0x00, 0x12)
                 map["color_temp_cycle"] = necLsbToRawPattern(0x00, 0x17)
-                map["brightness_up"] = necLsbToRawPattern(0x00, 0x18) // 100% MAX BRIGHTNESS (VERIFIED)
-                map["brightness_down"] = necLsbToRawPattern(0x00, 0x1C) // 50% MEDIUM BRIGHTNESS (VERIFIED)
+                map["brightness_up"] = necLsbRepeatPattern(0x00, 0x18, 3) // 100% MAX BRIGHTNESS (VERIFIED)
+                map["brightness_down"] = necLsbRepeatPattern(0x00, 0x1C, 3) // 50% MEDIUM BRIGHTNESS (VERIFIED)
                 map["warm_white"] = necLsbToRawPattern(0x00, 0x11)
                 map["cool_white"] = necLsbToRawPattern(0x00, 0x13)
                 map["night_light"] = necLsbToRawPattern(0x00, 0x15) // 5% LOW BRIGHTNESS (VERIFIED)
@@ -108,8 +123,8 @@ object IrCodeDatabase {
             2 -> { // Variant C: CCT 21-Key Controller
                 map["power_toggle"] = necLsbToRawPattern(0x00, 0xB2)
                 map["color_temp_cycle"] = necLsbToRawPattern(0x00, 0x30)
-                map["brightness_up"] = necLsbToRawPattern(0x00, 0x18)
-                map["brightness_down"] = necLsbToRawPattern(0x00, 0x1C)
+                map["brightness_up"] = necLsbRepeatPattern(0x00, 0x18, 3)
+                map["brightness_down"] = necLsbRepeatPattern(0x00, 0x1C, 3)
                 map["warm_white"] = necLsbToRawPattern(0x00, 0x50)
                 map["cool_white"] = necLsbToRawPattern(0x00, 0xD0)
                 map["night_light"] = necLsbToRawPattern(0x00, 0x15)
@@ -117,8 +132,8 @@ object IrCodeDatabase {
             3 -> { // Variant D: CCT Driver Pro
                 map["power_toggle"] = necLsbToRawPattern(0x00, 0x0A)
                 map["color_temp_cycle"] = necLsbToRawPattern(0x00, 0x0C)
-                map["brightness_up"] = necLsbToRawPattern(0x00, 0x18)
-                map["brightness_down"] = necLsbToRawPattern(0x00, 0x1C)
+                map["brightness_up"] = necLsbRepeatPattern(0x00, 0x18, 3)
+                map["brightness_down"] = necLsbRepeatPattern(0x00, 0x1C, 3)
                 map["warm_white"] = necLsbToRawPattern(0x00, 0x48)
                 map["cool_white"] = necLsbToRawPattern(0x00, 0x68)
                 map["night_light"] = necLsbToRawPattern(0x00, 0x15)
@@ -126,8 +141,8 @@ object IrCodeDatabase {
             else -> { // Variant A: Standard 24-Key CCT
                 map["power_toggle"] = necLsbToRawPattern(0x00, 0x02)
                 map["color_temp_cycle"] = necLsbToRawPattern(0x00, 0xB0)
-                map["brightness_up"] = necLsbToRawPattern(0x00, 0x18)
-                map["brightness_down"] = necLsbToRawPattern(0x00, 0x1C)
+                map["brightness_up"] = necLsbRepeatPattern(0x00, 0x18, 3)
+                map["brightness_down"] = necLsbRepeatPattern(0x00, 0x1C, 3)
                 map["warm_white"] = necLsbToRawPattern(0x00, 0x22)
                 map["cool_white"] = necLsbToRawPattern(0x00, 0xC2)
                 map["night_light"] = necLsbToRawPattern(0x00, 0x15)
