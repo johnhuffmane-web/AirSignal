@@ -2,11 +2,14 @@ package com.example.universalir
 
 import android.graphics.Typeface
 import android.os.Bundle
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.example.universalir.hardware.IrCodeDatabase
 import com.example.universalir.hardware.IrRepository
 import com.example.universalir.model.Appliance
 import com.example.universalir.model.ApplianceType
+import com.example.universalir.model.DeviceStorage
 import com.google.gson.Gson
 
 class ControlActivity : AppCompatActivity() {
@@ -49,9 +52,50 @@ class ControlActivity : AppCompatActivity() {
             text = "3-Color Kelvin & Dimmer Controls"
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
-            setPadding(0, 0, 0, 16)
+            setPadding(0, 0, 0, 12)
         }
         container.addView(label)
+
+        // Protocol / Address Selector
+        val protocolLabel = TextView(this).apply {
+            text = "Fine-Tune Protocol / IR Address:"
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 0, 0, 4)
+        }
+        container.addView(protocolLabel)
+
+        val protocolSpinner = Spinner(this)
+        val protocols = listOf(
+            "Protocol 1: Lazada Nordic Lamp (0x00EF)",
+            "Protocol 2: Standard 24-Key RGB (0x00FF)",
+            "Protocol 3: CCT 3-Color Driver (0x0000)",
+            "Protocol 4: Mini LED Controller (0x00BF)",
+            "Protocol 5: 44-Key LED Controller (0x00F7)",
+            "Protocol 6: Tuya Smart IR (0x708F)"
+        )
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, protocols)
+        protocolSpinner.adapter = adapter
+        container.addView(protocolSpinner)
+
+        val protocolAddresses = listOf(
+            0x00EF0000L,
+            0x00FF0000L,
+            0x00000000L,
+            0x00BF0000L,
+            0x00F70000L,
+            0x708F0000L
+        )
+
+        protocolSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedAddress = protocolAddresses[position]
+                val updatedMap = IrCodeDatabase.getLampProtocolMap(selectedAddress)
+                appliance = appliance.copy(commandMap = updatedMap)
+                updateDeviceStorage(appliance)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
 
         // Power Toggle Button
         val powerBtn = Button(this).apply {
@@ -205,6 +249,16 @@ class ControlActivity : AppCompatActivity() {
         volLayout.addView(volUpBtn)
         volLayout.addView(volDownBtn)
         container.addView(volLayout)
+    }
+
+    private fun updateDeviceStorage(updatedAppliance: Appliance) {
+        val deviceStorage = DeviceStorage(this)
+        val devices = deviceStorage.loadDevices()
+        val index = devices.indexOfFirst { it.id == updatedAppliance.id }
+        if (index >= 0) {
+            devices[index] = updatedAppliance
+            deviceStorage.saveDevices(devices)
+        }
     }
 
     private fun sendCommand(actionKey: String) {

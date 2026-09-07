@@ -49,6 +49,21 @@ object IrCodeDatabase {
         return list.toIntArray()
     }
 
+    /**
+     * Generates a complete command map for CCT 3-Color Dimmable Lamps based on address header.
+     */
+    fun getLampProtocolMap(addressHeader: Long): Map<String, IntArray> {
+        val map = mutableMapOf<String, IntArray>()
+        map["power_toggle"] = necToRawPattern(addressHeader or 0x02FDL)
+        map["color_temp_cycle"] = necToRawPattern(addressHeader or 0xE01FL)
+        map["brightness_up"] = necToRawPattern(addressHeader or 0x629DL)
+        map["brightness_down"] = necToRawPattern(addressHeader or 0xA25DL)
+        map["warm_white"] = necToRawPattern(addressHeader or 0x22DDL)
+        map["cool_white"] = necToRawPattern(addressHeader or 0xC23DL)
+        map["night_light"] = necToRawPattern(addressHeader or 0xA857L)
+        return map
+    }
+
     val allCandidates: List<IrCandidate> = listOf(
         // Lamp / Lighting (Includes common Lazada/Shopee Nordic Standing & Corner Floor Lamp IR remotes)
         IrCandidate("Nordic Floor Lamp 24-Key Power ON (0x00FF02FD)", ApplianceType.LAMP, 38000, necToRawPattern(0x00FF02FDL)),
