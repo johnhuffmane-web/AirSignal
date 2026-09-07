@@ -1,5 +1,8 @@
 package com.example.universalir
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -14,6 +17,7 @@ import com.example.universalir.model.Appliance
 import com.example.universalir.model.ApplianceType
 import com.example.universalir.model.DeviceStorage
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -39,6 +43,8 @@ class MainActivity : AppCompatActivity() {
         statusTextView = findViewById(R.id.statusTextView)
         deviceListView = findViewById(R.id.deviceListView)
         val scanButton = findViewById<Button>(R.id.scanButton)
+        val addHexButton = findViewById<Button>(R.id.addHexButton)
+        val vaultBackupButton = findViewById<Button>(R.id.vaultBackupButton)
 
         if (irRepository.hasEmitter) {
             statusTextView.text = "IR Hardware Ready. Saved Devices: ${savedDevicesList.size}"
@@ -52,6 +58,16 @@ class MainActivity : AppCompatActivity() {
         // Trigger scan & match process
         scanButton.setOnClickListener {
             startScanAndMatchFlow()
+        }
+
+        // Add custom HEX code signal directly
+        addHexButton.setOnClickListener {
+            showAddCustomHexDialog()
+        }
+
+        // Export/Import JSON Remote Vault Backup
+        vaultBackupButton.setOnClickListener {
+            showVaultBackupDialog()
         }
 
         // Handle clicking a saved device to open its dynamic control screen
@@ -186,6 +202,109 @@ class MainActivity : AppCompatActivity() {
         scanRunnable?.let { scanHandler?.removeCallbacks(it) }
         scanHandler = null
         scanRunnable = null
+    }
+
+    /**
+     * Manual HEX Code / Signal Generator Dialog
+     */
+    private fun showAddCustomHexDialog() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(40, 20, 40, 20)
+        }
+
+        val nameInput = EditText(this).apply { hint = "Appliance Name (e.g. Living Room Lamp)" }
+        val hexInput = EditText(this).apply { hint = "HEX Code (e.g. 0x00FF02FD or 0x00EF1CE3)" }
+        val spinner = Spinner(this)
+        val types = ApplianceType.values().map { it.name }
+        spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, types)
+
+        layout.addView(TextView(this).apply { text = "Add Device by Custom HEX Code:" })
+        layout.addView(nameInput)
+        layout.addView(hexInput)
+        layout.addView(TextView(this).apply { text = "Select Category:" })
+        layout.addView(spinner)
+
+        AlertDialog.Builder(this)
+            .setTitle("Add Custom HEX Signal")
+            .setView(layout)
+            .setPositiveButton("Save Signal") { dialog, _ ->
+                val name = nameInput.text.toString().trim()
+                val hexStr = hexInput.text.toString().trim().replace("0x", "").replace("0X", "")
+                if (name.isEmpty() || hexStr.isEmpty()) {
+                    Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                try {
+                    val hexVal = hexStr.toLong(16)
+                    val rawPattern = IrCodeDatabase.necToRawPattern(hexVal)
+                    val selectedType = ApplianceType.valueOf(spinner.selectedItem.toString())
+                    val commandMap = createCommandMapForType(selectedType, rawPattern)
+
+                    val appliance = Appliance(
+                        id = UUID.randomUUID().toString(),
+                        name = name,
+                        type = selectedType,
+                        commandMap = commandMap
+                    )
+
+                    savedDevicesList.add(appliance)
+                    deviceStorage.saveDevices(savedDevicesList)
+                    refreshDeviceList()
+                    Toast.makeText(this, "Successfully saved custom signal $name!", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Invalid HEX code format", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /**
+     * Backup & Restore Vault Dialog (Export/Import JSON)
+     */
+    private fun showVaultBackupDialog() {
+        val options = arrayOf("Export Remotes Vault to Clipboard", "Import Remotes Vault from Clipboard")
+        AlertDialog.Builder(this)
+            .setTitle("Remote Backup Vault (JSON)")
+            .setItems(options) { dialog, which ->
+                dialog.dismiss()
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                if (which == 0) {
+                    // Export
+                    val json = Gson().toJson(savedDevicesList)
+                    val clip = ClipData.newPlainText("AirSignal_Vault_Backup", json)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(this, "Copied ${savedDevicesList.size} remotes to clipboard!", Toast.LENGTH_LONG).show()
+                } else {
+                    // Import
+                    val clipData = clipboard.primaryClip
+                    if (clipData != null && clipData.itemCount > 0) {
+                        val json = clipData.getItemAt(0).text.toString()
+                        try {
+                            val type = object : TypeToken<MutableList<Appliance>>() {}.type
+                            val imported: MutableList<Appliance> = Gson().fromJson(json, type)
+                            if (imported.isNotEmpty()) {
+                                savedDevicesList.clear()
+                                savedDevicesList.addAll(imported)
+                                deviceStorage.saveDevices(savedDevicesList)
+                                refreshDeviceList()
+                                Toast.makeText(this, "Successfully restored ${imported.size} remotes!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(this, "Clipboard data empty or invalid", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(this, "Failed to parse backup JSON", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
     }
 
     /**

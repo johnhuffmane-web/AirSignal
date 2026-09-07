@@ -9,10 +9,10 @@
         android:id="@+id/statusTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        text="Checking IR Hardware..."
+        android:text="Checking IR Hardware..."
         android:textSize="16sp"
         android:gravity="center"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="8dp" />
 
     <Button
         android:id="@+id/scanButton"
@@ -20,6 +20,32 @@
         android:layout_height="wrap_content"
         android:text="Scan &amp; Add New Appliance"
         android:layout_marginBottom="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="12dp">
+
+        <Button
+            android:id="@+id/addHexButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="+ Custom HEX Signal"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/vaultBackupButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Backup Vault (JSON)"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
 
     <TextView
         android:id="@+id/rfNoticeTextView"
@@ -34,7 +60,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Your Saved Appliances:"
+        android:text="Your Saved Remote Vault:"
         android:textStyle="bold"
         android:textSize="16sp"
         android:layout_marginBottom="8dp" />
