@@ -114,19 +114,30 @@ class ControlActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        // Night Light Mode Button (Verified Working!)
+        // Night Light Mode Button
         val nightBtn = Button(this).apply {
-            text = "Night Light / Eco Mode (0x1C Verified)"
+            text = "Night Light / Low Brightness (5%)"
             setOnClickListener { sendCommand("night_light") }
         }
         container.addView(nightBtn)
 
         // Brightness + Button (Verified Working!)
         val brightMaxBtn = Button(this).apply {
-            text = "Max Brightness + (0x18 Verified)"
+            text = "Max Brightness + (100% Verified)"
             setOnClickListener { sendCommand("brightness_up") }
         }
         container.addView(brightMaxBtn)
+
+        // Medium Brightness Button (Verified Working!)
+        val brightMedBtn = Button(this).apply {
+            text = "Medium Brightness (50% Verified)"
+            setOnClickListener {
+                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x1C)
+                irRepository.transmit(38000, raw)
+                Toast.makeText(this@ControlActivity, "Sent 50% Medium Brightness", Toast.LENGTH_SHORT).show()
+            }
+        }
+        container.addView(brightMedBtn)
 
         // Power Toggle Button
         val powerBtn = Button(this).apply {
@@ -142,9 +153,106 @@ class ControlActivity : AppCompatActivity() {
         }
         container.addView(kelvinBtn)
 
+        // Multi-Address Header Test Suite (For Power On/Off & Color Switch)
+        val addressMatrixLabel = TextView(this).apply {
+            text = "Multi-Address Test Matrix (Find Power ON/OFF & 3-Color Switch):"
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 20, 0, 8)
+        }
+        container.addView(addressMatrixLabel)
+
+        val multiAddressList = listOf(
+            "Address 0x00EF (Lazada Nordic Lamp)" to 0x00EF,
+            "Address 0x00BF (Mini LED Controller)" to 0x00BF,
+            "Address 0x0000 (CCT 3-Color Driver)" to 0x0000,
+            "Address 0x708F (Tuya Smart IR Hub)" to 0x708F,
+            "Address 0x00F7 (44-Key LED Controller)" to 0x00F7
+        )
+
+        for ((addrName, addrValue) in multiAddressList) {
+            val sectionHeader = TextView(this).apply {
+                text = addrName
+                setTypeface(null, Typeface.BOLD)
+                setPadding(0, 12, 0, 4)
+            }
+            container.addView(sectionHeader)
+
+            // Row 1: Power ON & Power OFF
+            val powerRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val powerOnBtn = Button(this).apply {
+                text = "Power ON (0x02)"
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
+                setOnClickListener {
+                    val raw = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x02)
+                    irRepository.transmit(38000, raw)
+                    Toast.makeText(this@ControlActivity, "Sent $addrName Power ON", Toast.LENGTH_SHORT).show()
+                }
+            }
+            val powerOffBtn = Button(this).apply {
+                text = "Power OFF (0x00)"
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
+                setOnClickListener {
+                    val raw = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x00)
+                    irRepository.transmit(38000, raw)
+                    Toast.makeText(this@ControlActivity, "Sent $addrName Power OFF", Toast.LENGTH_SHORT).show()
+                }
+            }
+            val savePowerBtn = Button(this).apply {
+                text = "Save Power"
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                setOnClickListener {
+                    val updated = appliance.commandMap.toMutableMap()
+                    updated["power_toggle"] = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x02)
+                    appliance = appliance.copy(commandMap = updated)
+                    updateDeviceStorage(appliance)
+                    Toast.makeText(this@ControlActivity, "Saved $addrName as Power Code!", Toast.LENGTH_SHORT).show()
+                }
+            }
+            powerRow.addView(powerOnBtn)
+            powerRow.addView(powerOffBtn)
+            powerRow.addView(savePowerBtn)
+            container.addView(powerRow)
+
+            // Row 2: Kelvin Color Switch & Warm White
+            val kelvinRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val kelvinSwitchBtn = Button(this).apply {
+                text = "Kelvin Switch (0x1C)"
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
+                setOnClickListener {
+                    val raw = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x1C)
+                    irRepository.transmit(38000, raw)
+                    Toast.makeText(this@ControlActivity, "Sent $addrName Kelvin Switch", Toast.LENGTH_SHORT).show()
+                }
+            }
+            val warmWhiteBtn = Button(this).apply {
+                text = "Warm White (0x14)"
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
+                setOnClickListener {
+                    val raw = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x14)
+                    irRepository.transmit(38000, raw)
+                    Toast.makeText(this@ControlActivity, "Sent $addrName Warm White", Toast.LENGTH_SHORT).show()
+                }
+            }
+            val saveColorBtn = Button(this).apply {
+                text = "Save Color"
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                setOnClickListener {
+                    val updated = appliance.commandMap.toMutableMap()
+                    updated["color_temp_cycle"] = IrCodeDatabase.necLsbToRawPattern(addrValue, 0x1C)
+                    appliance = appliance.copy(commandMap = updated)
+                    updateDeviceStorage(appliance)
+                    Toast.makeText(this@ControlActivity, "Saved $addrName as Color Switch!", Toast.LENGTH_SHORT).show()
+                }
+            }
+            kelvinRow.addView(kelvinSwitchBtn)
+            kelvinRow.addView(warmWhiteBtn)
+            kelvinRow.addView(saveColorBtn)
+            container.addView(kelvinRow)
+        }
+
         // BAIERDI 0x10–0x1F Block Test Suite
         val baierdiMatrixLabel = TextView(this).apply {
-            text = "BAIERDI 0x10–0x1F Command Suite (0x00FF LSB):"
+            text = "BAIERDI 0x10–0x1F Command Suite (Address 0x00FF LSB):"
             setTypeface(null, Typeface.BOLD)
             setPadding(0, 20, 0, 8)
         }
@@ -159,11 +267,11 @@ class ControlActivity : AppCompatActivity() {
             "0x15 (Power OFF)" to 0x15,
             "0x16 (Brightness +)" to 0x16,
             "0x17 (Color Temp Cycle)" to 0x17,
-            "0x18 (Max Brightness - Verified)" to 0x18,
+            "0x18 (Max Brightness - 100% Verified)" to 0x18,
             "0x19 (50% Brightness)" to 0x19,
             "0x1A (30% Warm Night)" to 0x1A,
             "0x1B (Warmer Shift)" to 0x1B,
-            "0x1C (Night Light - Verified)" to 0x1C,
+            "0x1C (Medium Brightness - 50% Verified)" to 0x1C,
             "0x1D (Cooler Shift)" to 0x1D,
             "0x1E (30m Timer)" to 0x1E,
             "0x1F (60m Timer)" to 0x1F
