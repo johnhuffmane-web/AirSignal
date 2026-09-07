@@ -98,11 +98,71 @@ class ControlActivity : AppCompatActivity() {
         toolbar.addView(addCustomBtn)
         containerLayout.addView(toolbar)
 
+        // Standard 24-Key Power Test Section
+        val standard24KeyLabel = TextView(this).apply {
+            text = "Test Standard 24-Key CCT Power Codes (Address 0x00FF LSB):"
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 12, 0, 8)
+        }
+        containerLayout.addView(standard24KeyLabel)
+
+        val powerRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val testPowerOff0x08 = Button(this).apply {
+            text = "Test Power OFF (0x08)"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f).apply { marginEnd = 4 }
+            setOnClickListener {
+                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x08)
+                irRepository.transmit(38000, raw)
+                Toast.makeText(this@ControlActivity, "Sent Power OFF (0x08)", Toast.LENGTH_SHORT).show()
+            }
+        }
+        val savePowerOff0x08 = Button(this).apply {
+            text = "Save Power OFF"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener {
+                val updated = appliance.commandMap.toMutableMap()
+                updated["Power OFF"] = IrCodeDatabase.necLsbToRawPattern(0x00, 0x08)
+                appliance = appliance.copy(commandMap = updated)
+                updateDeviceStorage(appliance)
+                refreshRemoteUI()
+                Toast.makeText(this@ControlActivity, "Saved 0x08 as Power OFF!", Toast.LENGTH_SHORT).show()
+            }
+        }
+        powerRow.addView(testPowerOff0x08)
+        powerRow.addView(savePowerOff0x08)
+        containerLayout.addView(powerRow)
+
+        val powerOnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val testPowerOn0x88 = Button(this).apply {
+            text = "Test Power ON (0x88)"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f).apply { marginEnd = 4 }
+            setOnClickListener {
+                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x88)
+                irRepository.transmit(38000, raw)
+                Toast.makeText(this@ControlActivity, "Sent Power ON (0x88)", Toast.LENGTH_SHORT).show()
+            }
+        }
+        val savePowerOn0x88 = Button(this).apply {
+            text = "Save Power ON"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener {
+                val updated = appliance.commandMap.toMutableMap()
+                updated["Power ON"] = IrCodeDatabase.necLsbToRawPattern(0x00, 0x88)
+                appliance = appliance.copy(commandMap = updated)
+                updateDeviceStorage(appliance)
+                refreshRemoteUI()
+                Toast.makeText(this@ControlActivity, "Saved 0x88 as Power ON!", Toast.LENGTH_SHORT).show()
+            }
+        }
+        powerOnRow.addView(testPowerOn0x88)
+        powerOnRow.addView(savePowerOn0x88)
+        containerLayout.addView(powerOnRow)
+
         // Custom Universal Remote Canvas
         val canvasLabel = TextView(this).apply {
             text = "Your Configured Remote Buttons (${appliance.commandMap.size}):"
             setTypeface(null, Typeface.BOLD)
-            setPadding(0, 12, 0, 8)
+            setPadding(0, 16, 0, 8)
         }
         containerLayout.addView(canvasLabel)
 
