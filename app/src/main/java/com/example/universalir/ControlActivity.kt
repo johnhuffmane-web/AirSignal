@@ -10,10 +10,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.universalir.hardware.IrCodeDatabase
 import com.example.universalir.hardware.IrRepository
 import com.example.universalir.model.Appliance
-import com.example.universalir.model.ApplianceType
 import com.example.universalir.model.DeviceStorage
 import com.google.gson.Gson
-import java.util.UUID
 
 class ControlActivity : AppCompatActivity() {
 
@@ -126,8 +124,15 @@ class ControlActivity : AppCompatActivity() {
                     text = key.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.8f).apply { marginEnd = 4 }
                     setOnClickListener {
-                        irRepository.transmit(38000, pattern)
-                        Toast.makeText(this@ControlActivity, "Sent $key", Toast.LENGTH_SHORT).show()
+                        val lowerKey = key.lowercase()
+                        // Lock Sequence: If triggering Yellow Light (0x07), send double-lock sequence (0x09 -> 0x07 -> 0x07)
+                        if (lowerKey.contains("0x07") || lowerKey.contains("yellow") || lowerKey.contains("warm")) {
+                            sendMacroSequence(0x09, 0x07, 0x07)
+                            Toast.makeText(this@ControlActivity, "Sent Locked Yellow Sequence", Toast.LENGTH_SHORT).show()
+                        } else {
+                            irRepository.transmit(38000, pattern)
+                            Toast.makeText(this@ControlActivity, "Sent $key", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
 
@@ -150,6 +155,16 @@ class ControlActivity : AppCompatActivity() {
                 row.addView(deleteBtn)
                 containerLayout.addView(row)
             }
+        }
+    }
+
+    private fun sendMacroSequence(vararg bytes: Int) {
+        val handler = Handler(Looper.getMainLooper())
+        for (i in bytes.indices) {
+            handler.postDelayed({
+                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, bytes[i])
+                irRepository.transmit(38000, raw)
+            }, i * 200L)
         }
     }
 
@@ -219,8 +234,8 @@ class ControlActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(40, 20, 40, 20)
         }
-        val nameInput = EditText(this).apply { hint = "Button Name (e.g. Warm Yellow 3000K)" }
-        val hexInput = EditText(this).apply { hint = "HEX Code (e.g. 0x07 or 0x0C)" }
+        val nameInput = EditText(this).apply { hint = "Button Name (e.g. Yellow Light)" }
+        val hexInput = EditText(this).apply { hint = "HEX Code (e.g. 0x07 or 0x09 or 0x0C)" }
 
         layout.addView(TextView(this).apply { text = "Add Custom Button Code:" })
         layout.addView(nameInput)
