@@ -4,7 +4,6 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -14,11 +13,13 @@ import com.example.universalir.model.Appliance
 import com.example.universalir.model.ApplianceType
 import com.example.universalir.model.DeviceStorage
 import com.google.gson.Gson
+import java.util.UUID
 
 class ControlActivity : AppCompatActivity() {
 
     private lateinit var irRepository: IrRepository
     private lateinit var appliance: Appliance
+    private lateinit var containerLayout: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,9 +40,20 @@ class ControlActivity : AppCompatActivity() {
         appliance = Gson().fromJson(applianceJson, Appliance::class.java)
 
         val titleTextView = findViewById<TextView>(R.id.deviceTitleTextView)
-        val containerLayout = findViewById<LinearLayout>(R.id.controlsContainerLayout)
+        containerLayout = findViewById(R.id.controlsContainerLayout)
 
         titleTextView.text = appliance.name
+
+        refreshRemoteUI()
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
+    }
+
+    private fun refreshRemoteUI() {
+        containerLayout.removeAllViews()
 
         // Top "Back to Dashboard" button
         val backBtn = Button(this).apply {
@@ -50,113 +62,198 @@ class ControlActivity : AppCompatActivity() {
         }
         containerLayout.addView(backBtn)
 
-        when (appliance.type) {
-            ApplianceType.LAMP -> renderLampControls(containerLayout)
-            ApplianceType.AC -> renderAcControls(containerLayout)
-            ApplianceType.TV, ApplianceType.SOUNDBAR, ApplianceType.MEDIA_PLAYER -> renderStandardPowerControls(containerLayout)
-            else -> renderStandardPowerControls(containerLayout)
-        }
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
-    }
-
-    private fun renderLampControls(container: LinearLayout) {
-        val label = TextView(this).apply {
-            text = "3-Color Kelvin & Dimmer Controls"
-            textSize = 18f
-            setTypeface(null, Typeface.BOLD)
+        // Title and Rename Device
+        val deviceHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             setPadding(0, 16, 0, 12)
         }
-        container.addView(label)
+        val deviceTitle = TextView(this).apply {
+            text = "${appliance.name} (${appliance.type})"
+            textSize = 18f
+            setTypeface(null, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val renameDeviceBtn = Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+            text = "✎ Rename Device"
+            setOnClickListener { showRenameDeviceDialog() }
+        }
+        deviceHeader.addView(deviceTitle)
+        deviceHeader.addView(renameDeviceBtn)
+        containerLayout.addView(deviceHeader)
 
-        // Single-Click Full Command Byte Auto-Scanner (Address 0x00FF)
-        val fullScanBtn = Button(this).apply {
-            text = "⚡ Auto-Scan All Bytes for Power & Color Switch (Address 0x00FF)"
+        // Action Toolbar: Auto-Scan & Add Custom Signal
+        val toolbar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 16)
+        }
+        val scanBtn = Button(this).apply {
+            text = "⚡ Auto-Scan Bytes"
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
             setOnClickListener { startFullByteAutoScan() }
         }
-        container.addView(fullScanBtn)
-
-        // Verified Dimmer Controls
-        val dimmerLabel = TextView(this).apply {
-            text = "Verified Dimmer States (Address 0x00FF LSB):"
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, 16, 0, 8)
-        }
-        container.addView(dimmerLabel)
-
-        val maxBtn = Button(this).apply {
-            text = "100% Max Brightness (0x18 Verified)"
-            setOnClickListener {
-                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x18)
-                irRepository.transmit(38000, raw)
-                Toast.makeText(this@ControlActivity, "Sent 100% Max Brightness", Toast.LENGTH_SHORT).show()
-            }
-        }
-        container.addView(maxBtn)
-
-        val medBtn = Button(this).apply {
-            text = "50% Medium Brightness (0x1C Verified)"
-            setOnClickListener {
-                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x1C)
-                irRepository.transmit(38000, raw)
-                Toast.makeText(this@ControlActivity, "Sent 50% Medium Brightness", Toast.LENGTH_SHORT).show()
-            }
-        }
-        container.addView(medBtn)
-
-        val lowBtn = Button(this).apply {
-            text = "5% Low / Eco Mode (0x15 Verified)"
-            setOnClickListener {
-                val raw = IrCodeDatabase.necLsbToRawPattern(0x00, 0x15)
-                irRepository.transmit(38000, raw)
-                Toast.makeText(this@ControlActivity, "Sent 5% Low Brightness", Toast.LENGTH_SHORT).show()
-            }
-        }
-        container.addView(lowBtn)
-
-        // Power Toggle Button
-        val powerBtn = Button(this).apply {
-            text = "Power On / Off"
-            setOnClickListener { sendCommand("power_toggle") }
-        }
-        container.addView(powerBtn)
-
-        // Color Temperature Switch
-        val kelvinBtn = Button(this).apply {
-            text = "Switch Light Color (3000K / 4000K / 6500K)"
-            setOnClickListener { sendCommand("color_temp_cycle") }
-        }
-        container.addView(kelvinBtn)
-
-        // Multi-Address Header Test Suite
-        val autoScanLabel = TextView(this).apply {
-            text = "Find Power ON/OFF & Color Switch across Secondary Addresses:"
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, 20, 0, 8)
-        }
-        container.addView(autoScanLabel)
-
-        val autoScanLayout = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val scanColorBtn = Button(this).apply {
-            text = "Scan Secondary Color Switch"
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = 4 }
-            setOnClickListener { startAutoScanForCommand("color_temp_cycle", 0x1C) }
-        }
-        val scanPowerBtn = Button(this).apply {
-            text = "Scan Secondary Power OFF"
+        val addCustomBtn = Button(this).apply {
+            text = "+ Add Custom Code"
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setOnClickListener { startAutoScanForCommand("power_toggle", 0x00) }
+            setOnClickListener { showAddCustomButtonDialog() }
         }
-        autoScanLayout.addView(scanColorBtn)
-        autoScanLayout.addView(scanPowerBtn)
-        container.addView(autoScanLayout)
+        toolbar.addView(scanBtn)
+        toolbar.addView(addCustomBtn)
+        containerLayout.addView(toolbar)
+
+        // Custom Universal Remote Canvas
+        val canvasLabel = TextView(this).apply {
+            text = "Your Configured Remote Buttons (${appliance.commandMap.size}):"
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 12, 0, 8)
+        }
+        containerLayout.addView(canvasLabel)
+
+        if (appliance.commandMap.isEmpty()) {
+            val emptyNotice = TextView(this).apply {
+                text = "No buttons saved yet. Tap 'Auto-Scan Bytes' or '+ Add Custom Code' to start building your remote!"
+                setPadding(0, 16, 0, 16)
+            }
+            containerLayout.addView(emptyNotice)
+        } else {
+            for ((key, pattern) in appliance.commandMap) {
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(0, 4, 0, 4)
+                }
+
+                // Main Action Button
+                val actionBtn = Button(this).apply {
+                    text = key.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.8f).apply { marginEnd = 4 }
+                    setOnClickListener {
+                        irRepository.transmit(38000, pattern)
+                        Toast.makeText(this@ControlActivity, "Sent $key", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                // Rename Button
+                val renameBtn = Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+                    text = "✎"
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = 4 }
+                    setOnClickListener { showRenameButtonDialog(key) }
+                }
+
+                // Delete Button
+                val deleteBtn = Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+                    text = "🗑️"
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                    setOnClickListener { showDeleteButtonDialog(key) }
+                }
+
+                row.addView(actionBtn)
+                row.addView(renameBtn)
+                row.addView(deleteBtn)
+                containerLayout.addView(row)
+            }
+        }
+    }
+
+    private fun showRenameDeviceDialog() {
+        val input = EditText(this).apply { setText(appliance.name) }
+        AlertDialog.Builder(this)
+            .setTitle("Rename Appliance")
+            .setView(input)
+            .setPositiveButton("Save") { dialog, _ ->
+                val newName = input.text.toString().trim()
+                if (newName.isNotEmpty()) {
+                    appliance = appliance.copy(name = newName)
+                    updateDeviceStorage(appliance)
+                    refreshRemoteUI()
+                    Toast.makeText(this, "Renamed device to $newName", Toast.LENGTH_SHORT).show()
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showRenameButtonDialog(oldKey: String) {
+        val input = EditText(this).apply { setText(oldKey) }
+        AlertDialog.Builder(this)
+            .setTitle("Rename Button")
+            .setView(input)
+            .setPositiveButton("Save") { dialog, _ ->
+                val newKey = input.text.toString().trim()
+                if (newKey.isNotEmpty() && newKey != oldKey) {
+                    val pattern = appliance.commandMap[oldKey]
+                    if (pattern != null) {
+                        val updated = appliance.commandMap.toMutableMap()
+                        updated.remove(oldKey)
+                        updated[newKey] = pattern
+                        appliance = appliance.copy(commandMap = updated)
+                        updateDeviceStorage(appliance)
+                        refreshRemoteUI()
+                        Toast.makeText(this, "Renamed button to $newKey!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showDeleteButtonDialog(key: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Button")
+            .setMessage("Are you sure you want to delete '$key'?")
+            .setPositiveButton("Delete") { dialog, _ ->
+                val updated = appliance.commandMap.toMutableMap()
+                updated.remove(key)
+                appliance = appliance.copy(commandMap = updated)
+                updateDeviceStorage(appliance)
+                refreshRemoteUI()
+                Toast.makeText(this, "Deleted '$key'", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showAddCustomButtonDialog() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(40, 20, 40, 20)
+        }
+        val nameInput = EditText(this).apply { hint = "Button Name (e.g. Warm Yellow 3000K)" }
+        val hexInput = EditText(this).apply { hint = "HEX Code (e.g. 0x07 or 0x0C)" }
+
+        layout.addView(TextView(this).apply { text = "Add Custom Button Code:" })
+        layout.addView(nameInput)
+        layout.addView(hexInput)
+
+        AlertDialog.Builder(this)
+            .setTitle("Add Custom Button")
+            .setView(layout)
+            .setPositiveButton("Add Button") { dialog, _ ->
+                val name = nameInput.text.toString().trim()
+                val hexStr = hexInput.text.toString().trim().replace("0x", "").replace("0X", "")
+                if (name.isNotEmpty() && hexStr.isNotEmpty()) {
+                    try {
+                        val byteVal = hexStr.toInt(16)
+                        val pattern = IrCodeDatabase.necLsbToRawPattern(0x00, byteVal)
+                        val updated = appliance.commandMap.toMutableMap()
+                        updated[name] = pattern
+                        appliance = appliance.copy(commandMap = updated)
+                        updateDeviceStorage(appliance)
+                        refreshRemoteUI()
+                        Toast.makeText(this, "Added custom button '$name'!", Toast.LENGTH_SHORT).show()
+                        dialog.dismiss()
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "Invalid HEX code", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     /**
-     * Auto-scans all command bytes (0x00 to 0x3F) on Address 0x00FF LSB
+     * Auto-scans command bytes (0x00 to 0x3F) with Pause/Resume and custom naming
      */
     private fun startFullByteAutoScan() {
         val byteList = listOf(
@@ -165,6 +262,8 @@ class ControlActivity : AppCompatActivity() {
             0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x28, 0x2C, 0x30, 0x38, 0x3C, 0x40, 0x44, 0x48, 0x50, 0x60, 0x80, 0xA0, 0xB0, 0xC0, 0xD0, 0xE0, 0xF0
         )
         var idx = 0
+        var isPaused = false
+        var isScanning = true
         val handler = Handler(Looper.getMainLooper())
 
         val dialogView = layoutInflater.inflate(R.layout.dialog_scanning_progress, null)
@@ -173,36 +272,53 @@ class ControlActivity : AppCompatActivity() {
         val progressBar = dialogView.findViewById<ProgressBar>(R.id.scanProgressBar)
         val instructionText = dialogView.findViewById<TextView>(R.id.scanInstructionText)
         val stopBtn = dialogView.findViewById<Button>(R.id.stopScanButton)
+        val pauseBtn = dialogView.findViewById<Button>(R.id.pauseScanButton)
         val matchBtn = dialogView.findViewById<Button>(R.id.deviceReactedButton)
 
         titleText.text = "Auto-Scanning Command Bytes (Address 0x00FF)..."
         progressBar.max = byteList.size
         progressBar.progress = 1
-        matchBtn.text = "Device Reacted! (Save)"
+        matchBtn.text = "Reacted! (Save)"
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setCancelable(false)
             .create()
 
-        var isScanning = true
         val runnable = object : Runnable {
             override fun run() {
-                if (!isScanning || isFinishing || isDestroyed) return
+                if (!isScanning || isPaused || isFinishing || isDestroyed) return
                 if (idx < byteList.size) {
                     val cmdByte = byteList[idx]
                     val raw = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
                     irRepository.transmit(38000, raw)
 
                     progressBar.progress = idx + 1
-                    progressText.text = "Testing Byte ${idx + 1} of ${byteList.size} (0x${Integer.toHexString(cmdByte).uppercase()})"
-                    instructionText.text = "Watch your BAIERDI lamp! Did it turn OFF/ON or switch light colors?"
+                    val hexStr = "0x${Integer.toHexString(cmdByte).uppercase()}"
+                    progressText.text = "Testing Byte ${idx + 1} of ${byteList.size} ($hexStr)"
+                    instructionText.text = "Watch your lamp! Did it turn OFF/ON or change colors?"
 
                     idx++
-                    handler.postDelayed(this, 1800)
+                    handler.postDelayed(this, 2200)
                 } else {
-                    instructionText.text = "Finished testing command bytes."
+                    instructionText.text = "Finished testing all command bytes."
                 }
+            }
+        }
+
+        pauseBtn.setOnClickListener {
+            if (isPaused) {
+                isPaused = false
+                pauseBtn.text = "Pause"
+                val currentHex = if (idx > 0) "0x${Integer.toHexString(byteList[idx - 1]).uppercase()}" else "0x00"
+                instructionText.text = "Resuming scan from $currentHex..."
+                handler.post(runnable)
+            } else {
+                isPaused = true
+                handler.removeCallbacksAndMessages(null)
+                pauseBtn.text = "Resume"
+                val currentHex = if (idx > 0) "0x${Integer.toHexString(byteList[idx - 1]).uppercase()}" else "0x00"
+                instructionText.text = "⏸️ SCAN PAUSED at Byte $currentHex\n(Type your notes now. Tap Resume to continue!)"
             }
         }
 
@@ -220,172 +336,30 @@ class ControlActivity : AppCompatActivity() {
             val matchedByte = if (idx > 0) byteList[idx - 1] else byteList[0]
             val matchedHex = "0x${Integer.toHexString(matchedByte).uppercase()}"
 
-            val saveOptions = arrayOf("Save as Power ON/OFF Code", "Save as 3-Color Kelvin Switch Code", "Save as Warm White (3000K)")
+            // Quick Name Entry Dialog
+            val nameInput = EditText(this@ControlActivity).apply {
+                setText("Signal $matchedHex")
+            }
             AlertDialog.Builder(this@ControlActivity)
-                .setTitle("Match Found: Byte $matchedHex")
-                .setItems(saveOptions) { _, choice ->
+                .setTitle("Save Signal $matchedHex")
+                .setMessage("Type any custom name for this remote button:")
+                .setView(nameInput)
+                .setPositiveButton("Save Button") { _, _ ->
+                    val customBtnName = nameInput.text.toString().trim()
+                    val validName = if (customBtnName.isNotEmpty()) customBtnName else "Signal $matchedHex"
+
                     val updated = appliance.commandMap.toMutableMap()
-                    val key = when (choice) {
-                        0 -> "power_toggle"
-                        1 -> "color_temp_cycle"
-                        2 -> "warm_white"
-                        else -> "power_toggle"
-                    }
-                    updated[key] = IrCodeDatabase.necLsbToRawPattern(0x00, matchedByte)
+                    updated[validName] = IrCodeDatabase.necLsbToRawPattern(0x00, matchedByte)
                     appliance = appliance.copy(commandMap = updated)
                     updateDeviceStorage(appliance)
-                    Toast.makeText(this@ControlActivity, "Saved Byte $matchedHex as $key!", Toast.LENGTH_LONG).show()
+                    refreshRemoteUI()
+                    Toast.makeText(this@ControlActivity, "Saved '$validName' into remote!", Toast.LENGTH_LONG).show()
                 }
                 .show()
         }
 
         dialog.show()
         handler.post(runnable)
-    }
-
-    private fun startAutoScanForCommand(actionKey: String, cmdByte: Int) {
-        val addressList = listOf(0x00EF, 0x00BF, 0x0000, 0x708F, 0x00F7, 0x007F, 0x00DF, 0x10EF)
-        var idx = 0
-        val handler = Handler(Looper.getMainLooper())
-
-        val dialogView = layoutInflater.inflate(R.layout.dialog_scanning_progress, null)
-        val titleText = dialogView.findViewById<TextView>(R.id.scanDeviceTypeTextView)
-        val progressText = dialogView.findViewById<TextView>(R.id.scanProgressText)
-        val progressBar = dialogView.findViewById<ProgressBar>(R.id.scanProgressBar)
-        val instructionText = dialogView.findViewById<TextView>(R.id.scanInstructionText)
-        val stopBtn = dialogView.findViewById<Button>(R.id.stopScanButton)
-        val matchBtn = dialogView.findViewById<Button>(R.id.deviceReactedButton)
-
-        titleText.text = "Scanning Secondary Address Headers..."
-        progressBar.max = addressList.size
-        progressBar.progress = 1
-        matchBtn.text = "Found Reaction! (Save)"
-
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(false)
-            .create()
-
-        var isScanning = true
-        val runnable = object : Runnable {
-            override fun run() {
-                if (!isScanning || isFinishing || isDestroyed) return
-                if (idx < addressList.size) {
-                    val addr = addressList[idx]
-                    val raw = IrCodeDatabase.necLsbToRawPattern(addr, cmdByte)
-                    irRepository.transmit(38000, raw)
-
-                    progressBar.progress = idx + 1
-                    progressText.text = "Testing Address ${idx + 1} of ${addressList.size} (0x${Integer.toHexString(addr).uppercase()})"
-                    instructionText.text = if (actionKey == "power_toggle") "Watch if lamp turns OFF or ON!" else "Watch if light color changes (Warm/White/Cool)!"
-
-                    idx++
-                    handler.postDelayed(this, 2000)
-                } else {
-                    instructionText.text = "Finished testing all secondary addresses."
-                }
-            }
-        }
-
-        stopBtn.setOnClickListener {
-            isScanning = false
-            handler.removeCallbacksAndMessages(null)
-            dialog.dismiss()
-        }
-
-        matchBtn.setOnClickListener {
-            isScanning = false
-            handler.removeCallbacksAndMessages(null)
-            dialog.dismiss()
-
-            val matchedAddr = if (idx > 0) addressList[idx - 1] else addressList[0]
-            val updated = appliance.commandMap.toMutableMap()
-            updated[actionKey] = IrCodeDatabase.necLsbToRawPattern(matchedAddr, cmdByte)
-            appliance = appliance.copy(commandMap = updated)
-            updateDeviceStorage(appliance)
-            Toast.makeText(this, "Saved Address 0x${Integer.toHexString(matchedAddr).uppercase()} for $actionKey!", Toast.LENGTH_LONG).show()
-        }
-
-        dialog.show()
-        handler.post(runnable)
-    }
-
-    private fun renderAcControls(container: LinearLayout) {
-        val label = TextView(this).apply {
-            text = "Air Conditioner Controls"
-            textSize = 18f
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, 0, 0, 16)
-        }
-        container.addView(label)
-
-        val powerBtn = Button(this).apply {
-            text = "AC Power On / Off"
-            setOnClickListener { sendCommand("power_toggle") }
-        }
-        container.addView(powerBtn)
-
-        val tempLabel = TextView(this).apply {
-            text = "Temperature Adjustment:"
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, 16, 0, 8)
-        }
-        container.addView(tempLabel)
-
-        val tempLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-        val tempUpBtn = Button(this).apply {
-            text = "Temp +"
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginEnd = 8
-            }
-            setOnClickListener { sendCommand("temp_up") }
-        }
-        val tempDownBtn = Button(this).apply {
-            text = "Temp -"
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setOnClickListener { sendCommand("temp_down") }
-        }
-        tempLayout.addView(tempUpBtn)
-        tempLayout.addView(tempDownBtn)
-        container.addView(tempLayout)
-    }
-
-    private fun renderStandardPowerControls(container: LinearLayout) {
-        val label = TextView(this).apply {
-            text = "Device Controls"
-            textSize = 18f
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, 0, 0, 16)
-        }
-        container.addView(label)
-
-        val powerBtn = Button(this).apply {
-            text = "Power On / Off"
-            setOnClickListener { sendCommand("power_toggle") }
-        }
-        container.addView(powerBtn)
-
-        val volLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 16, 0, 0)
-        }
-        val volUpBtn = Button(this).apply {
-            text = "Volume +"
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginEnd = 8
-            }
-            setOnClickListener { sendCommand("vol_up") }
-        }
-        val volDownBtn = Button(this).apply {
-            text = "Volume -"
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setOnClickListener { sendCommand("vol_down") }
-        }
-        volLayout.addView(volUpBtn)
-        volLayout.addView(volDownBtn)
-        container.addView(volLayout)
     }
 
     private fun updateDeviceStorage(updatedAppliance: Appliance) {
@@ -396,14 +370,5 @@ class ControlActivity : AppCompatActivity() {
             devices[index] = updatedAppliance
             deviceStorage.saveDevices(devices)
         }
-    }
-
-    private fun sendCommand(actionKey: String) {
-        val pattern = appliance.commandMap[actionKey]
-            ?: appliance.commandMap["power_toggle"]
-            ?: intArrayOf(9000, 4500, 560, 560)
-            
-        irRepository.transmit(38000, pattern)
-        Toast.makeText(this, "Sent ${actionKey.replace('_', ' ')} command", Toast.LENGTH_SHORT).show()
     }
 }

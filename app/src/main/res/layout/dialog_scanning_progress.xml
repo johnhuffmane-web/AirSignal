@@ -45,21 +45,32 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="end">
+        android:gravity="center">
 
         <Button
             android:id="@+id/stopScanButton"
             style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Stop Scanning"
-            android:layout_marginEnd="8dp" />
+            android:layout_weight="1"
+            android:text="Stop"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/pauseScanButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Pause"
+            android:layout_marginEnd="4dp" />
 
         <Button
             android:id="@+id/deviceReactedButton"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Device Reacted! (Save)" />
+            android:layout_weight="1.2"
+            android:text="Reacted! (Save)" />
 
     </LinearLayout>
 
