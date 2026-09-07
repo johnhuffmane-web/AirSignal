@@ -21,6 +21,9 @@ class ControlActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_control)
 
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = "Device Controls"
+
         irRepository = IrRepository(this)
 
         val applianceJson = intent.getStringExtra("appliance_extra")
@@ -37,6 +40,13 @@ class ControlActivity : AppCompatActivity() {
 
         titleTextView.text = appliance.name
 
+        // Top "Back to Dashboard" button
+        val backBtn = Button(this).apply {
+            text = "← Back to Main Dashboard"
+            setOnClickListener { finish() }
+        }
+        containerLayout.addView(backBtn)
+
         when (appliance.type) {
             ApplianceType.LAMP -> renderLampControls(containerLayout)
             ApplianceType.AC -> renderAcControls(containerLayout)
@@ -45,12 +55,17 @@ class ControlActivity : AppCompatActivity() {
         }
     }
 
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
+    }
+
     private fun renderLampControls(container: LinearLayout) {
         val label = TextView(this).apply {
             text = "3-Color Kelvin & Dimmer Controls"
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
-            setPadding(0, 0, 0, 12)
+            setPadding(0, 16, 0, 12)
         }
         container.addView(label)
 
@@ -146,7 +161,14 @@ class ControlActivity : AppCompatActivity() {
             "Color Code 1 (0xB0)" to 0x00FFB04FL,
             "Color Code 2 (0x1C)" to 0x00FF1CE3L,
             "Color Code 3 (0x0C)" to 0x00FF0CF3L,
-            "Color Code 4 (0x20)" to 0x00FF20DFL
+            "Color Code 4 (0x20)" to 0x00FF20DFL,
+            "Color Code 5 (0x48)" to 0x00FF48B7L,
+            "Color Code 6 (0x68)" to 0x00FF6897L,
+            "Color Code 7 (0x88)" to 0x00FF8877L,
+            "Color Code 8 (0xE8)" to 0x00FFE817L,
+            "Color Code 9 (0x28)" to 0x00FF28D7L,
+            "Color Code 10 (0x14)" to 0x00FF14EBL,
+            "Color Code 11 (0x04)" to 0x00FF04FBL
         )
 
         for ((name, code) in colorCodes) {
@@ -187,7 +209,12 @@ class ControlActivity : AppCompatActivity() {
             "Power Code 1 (0x02)" to 0x00FF02FDL,
             "Power Code 2 (0x12)" to 0x00FF12EDL,
             "Power Code 3 (0x00)" to 0x00FF00FFL,
-            "Power Code 4 (0x0A)" to 0x00FF0AF5L
+            "Power Code 4 (0x0A)" to 0x00FF0AF5L,
+            "Power Code 5 (0x01)" to 0x00FF01FEL,
+            "Power Code 6 (0x03)" to 0x00FF03FCL,
+            "Power Code 7 (0x1A)" to 0x00FF1AE5L,
+            "Power Code 8 (0x1E)" to 0x00FF1EE1L,
+            "Power Code 9 (0x40)" to 0x00FF40BFL
         )
 
         for ((name, code) in powerCodes) {
@@ -227,7 +254,8 @@ class ControlActivity : AppCompatActivity() {
         val dimCodes = listOf(
             "Dimmer Code 1 (0x10)" to 0x00FF10EFL,
             "Dimmer Code 2 (0x08)" to 0x00FF08F7L,
-            "Dimmer Code 3 (0xA0)" to 0x00FFA05FL
+            "Dimmer Code 3 (0xA0)" to 0x00FFA05FL,
+            "Dimmer Code 4 (0x80)" to 0x00FF807FL
         )
 
         for ((name, code) in dimCodes) {
