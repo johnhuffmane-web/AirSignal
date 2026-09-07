@@ -1,36 +1,34 @@
-# AirSignal (v1.2)
+# AirSignal (v1.3 Dev Build)
 
 **AirSignal** is an Android mobile remote control platform built to bridge direct consumer infrared (IR) hardware emissions with Radio Frequency (RF) smart home protocol management. AirSignal turns mobile devices into universal control hubs for Televisions, Air Conditioners, Smart Lamps, Fans, Soundbars, Media Players, and Projectors.
 
 Built with modern Android architectural patterns, AirSignal incorporates hardware abstraction layers, non-blocking asynchronous transmission loops, dynamic runtime UI generation, targeted category signal scanning, and intelligent protocol guidance for both optical IR and wireless RF devices.
 
+> **Development Status**: AirSignal is currently in **Active Protocol Refinement & Dev Mode**, focusing on deep signal state machine troubleshooting for complex CCT LED lamp drivers (such as BAIERDI floor lamps, SKU `4766740590_PH-31007347311`) while providing a fully customizable **Universal Remote Canvas** and **Remote Backup Vault**.
+
 ---
 
 ## Technical Highlights & Core Architecture
 
-* **Dual Signal Management (IR & RF Protocols)**:
-  - **Native Optical IR Engine**: Interfacing directly with Android's `ConsumerIrManager` service to generate precision microsecond pulse mark/space arrays across 36.0 kHz, 36.7 kHz, 38.0 kHz, and 40.0 kHz carrier frequencies.
-  - **RF Remote & Smart Gateway Integration**: Built-in signal classification guidance that distinguishes line-of-sight optical IR signals from 433MHz / 315MHz / 2.4GHz Radio Frequency and Bluetooth devices (e.g., Lazada/Shopee Nordic LED floor lamps and RF fans), providing smart hub integration pathways.
+* **Official LSB-First NEC Protocol Engine (`IrCodeDatabase`)**:
+  - Implements true official LSB-first (Least Significant Bit first) 32-bit NEC framing (`necLsbToRawPattern`) required by Chinese CCT LED lamp microcontrollers.
+  - Implements microsecond burst repeat sequences (`necLsbRepeatPattern`) operating at 110ms frame intervals to simulate continuous smooth PWM slider dimming.
 
-* **Targeted Category Scanning & Frequency Matrix (`IrCodeDatabase`)**:
-  - Indexed candidate registry organized by `ApplianceType` (`LAMP`, `TV`, `AC`, `FAN`, `SOUNDBAR`, `MEDIA_PLAYER`, `PROJECTOR`).
-  - Pre-scan category filtering narrows search space and minimizes scan times by eliminating redundant frequency brute-forcing.
-  - Comprehensive protocol coverage (NEC, Sony SIRC, RC5/RC6, Panasonic/Kaseikyo, and popular Chinese Nordic lamp controller profiles).
+* **Macro Sequence Engine (`sendMacroSequence`)**:
+  - Automatically resolves state-machine deadlocks in CCT drivers (such as switching from 4000K Natural Yellow to 3000K Warm Yellow) by sending automated reset and double-lock sequences (`0x09` Cool White Reset -> `0x07` Warm Yellow -> `0x07` Lock) spaced by 200ms gaps.
 
-* **Asynchronous Non-Blocking Scan Engine (`MainActivity`)**:
-  - Main-thread-safe asynchronous execution powered by `Handler` / `Looper` scheduling with an automated 2.5-second cadence per test code.
-  - Real-time progress feedback via horizontal `ProgressBar` displaying current candidate index, active carrier frequency, and protocol payload details.
-  - Lifecycle-aware cancellation ("Stop Scanning") preventing memory leaks and background transmissions (`onDestroy` teardown).
-  - One-click signal capture ("Device Reacted!") that preserves matched carrier frequencies and pulse-length arrays (`IntArray`) into persistent appliance profiles.
+* **Single-Click Auto-Scan Engine with Pause & Resume (`ControlActivity`)**:
+  - Systematically tests all 256 candidate command bytes across Address `0x00FF` LSB.
+  - Features a live **Pause / Resume** hook (`pauseScanButton`) allowing developers to freeze the scan timer, inspect active HEX payload details, take notes, and resume without restarting.
 
-* **Hardware Abstraction Layer (`IrRepository`)**:
-  - Encapsulates system services with null-safe hardware presence verification (`hasIrEmitter`) to handle devices with or without physical IR hardware gracefully.
+* **Custom Universal Remote Canvas & Dynamic Renaming**:
+  - Every remote control profile is rendered as an interactive, customizable canvas.
+  - Users can rename any button label anytime (✎) or delete unused signal keys (🗑️).
+  - Custom signal generator (`+ Add Custom Code`) converts any raw hex byte (e.g. `0x07`, `0x09`, `0x0C`, `0x18`) into a functional button instantly.
 
-* **Dynamic Runtime Control Surface (`ControlActivity`)**:
-  - Context-aware UI renderer that dynamically generates specialized controls based on appliance classification (e.g., Kelvin/dimmer controls for `LAMP`, temperature state panels for `AC`, and standard power toggles for `TV`/`SOUNDBAR`).
-
-* **Local Profile Persistence (`DeviceStorage`)**:
-  - Persistent profile management using `SharedPreferences` paired with Gson serialization for multi-device profile storage and command key mapping.
+* **JSON Remote Backup Vault (`MainActivity`)**:
+  - Full export and import capability (`AirSignal_Vault_Backup`) using Gson serialization.
+  - Allows users to copy their entire remote database to the clipboard or back it up to cloud/email, ensuring remotes are never lost if the physical remote or phone is replaced.
 
 ---
 
@@ -39,6 +37,7 @@ Built with modern Android architectural patterns, AirSignal incorporates hardwar
 | Component | Specification |
 | :--- | :--- |
 | **Project Name** | AirSignal |
+| **Current Build** | v1.3 Development Build |
 | **Language** | Kotlin 2.0.21 |
 | **Build System** | Gradle 8.5.2 (Kotlin DSL `.kts`) |
 | **Compatibility** | Android 5.0 (API 21) to Android 14 (API 34) |
@@ -49,35 +48,28 @@ Built with modern Android architectural patterns, AirSignal incorporates hardwar
 
 ---
 
-## Project Structure
+## Verified Command Mapping for BAIERDI CCT Lamp (Address 0x00FF LSB)
 
-```text
-AirSignal/
-├── app/
-│   ├── src/
-│   │   └── main/
-│   │       ├── java/com/example/universalir/
-│   │       │   ├── MainActivity.kt               # Main dashboard & asynchronous scanner
-│   │       │   ├── ControlActivity.kt            # Dynamic control panel renderer
-│   │       │   ├── DeviceStorage.kt              # Local JSON/SharedPreferences persistence
-│   │       │   ├── hardware/
-│   │       │   │   ├── IrRepository.kt           # ConsumerIrManager API wrapper
-│   │       │   │   └── IrCodeDatabase.kt         # Mapped IR/RF carrier frequencies & signal protocols
-│   │       │   └── model/
-│   │       │       ├── Appliance.kt              # Appliance domain model & command map
-│   │       │       └── ApplianceType.kt          # Categorized appliance enum
-│   │       └── res/
-│   │           └── layout/
-│   │               ├── activity_main.xml
-│   │               ├── activity_control.xml
-│   │               ├── dialog_scanning_progress.xml  # Live scan progress & frequency UI
-│   │               └── dailog_save_device.xml
-│   └── build.gradle.kts                          # Module build script
-├── build.gradle.kts                              # Root build script
-├── settings.gradle                               # Plugin & dependency resolution management
-├── gradle.properties                             # AndroidX & build properties
-└── .gitignore                                    # Git exclusion rules
-```
+| Command Byte | Function / Color State | Verification Status |
+| :--- | :--- | :--- |
+| **`0x07`** | Warm Yellow Light (3000K) | **Verified** *(Double-Lock Macro: 0x09 -> 0x07 -> 0x07)* |
+| **`0x09`** | Blue / Cool White Light (6500K) | **Verified** |
+| **`0x0C`** | Bright Natural Yellow (4000K) | **Verified** |
+| **`0x18`** | 100% Max Brightness | **Verified** *(3-Burst Hold)* |
+| **`0x1C`** | 50% Medium Brightness | **Verified** *(3-Burst Hold)* |
+| **`0x15`** | 5% Low Eco / Night Light | **Verified** |
+| **`0x08` / `0x88`** | Power OFF / Power ON candidates | *Active Debugging / In Progress* |
+
+---
+
+## Roadmap & Next Steps
+
+1. **Continuous Dimmer PWM Hold Simulation**:
+   - Refine repeat pulse timing intervals to match physical remote slider behavior.
+2. **Power ON/OFF Sweep**:
+   - Sweep remaining single-byte toggles on Address `0x00FF` (`0x02`, `0x12`, `0x0A`, `0x04`, `0x01`, `0x03`, `0x00`, `0x14`, `0x1A`) to lock in power toggle.
+3. **Developer Mode / Clean User Mode Toggle**:
+   - Introduce a mode toggle to hide developer auto-scanners and diagnostic matrix panels for production release.
 
 ---
 
@@ -96,4 +88,4 @@ AirSignal/
    ```
 
 3. **Deploy to Hardware**:
-   Deploy to a physical Android device equipped with an IR blaster hardware module (e.g., Xiaomi, Honor, or Huawei devices) or pair via smart hub bridge for RF devices.
+   Deploy to a physical Android device equipped with an IR blaster hardware emitter.
