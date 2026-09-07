@@ -27,7 +27,7 @@ data class IrCandidate(
 object IrCodeDatabase {
 
     /**
-     * Converts a 32-bit NEC protocol hex code into raw microsecond mark/space array.
+     * Converts a 32-bit NEC protocol hex code into raw microsecond mark/space array (MSB-first).
      */
     fun necToRawPattern(hexCode: Long): IntArray {
         val list = mutableListOf<Int>()
@@ -50,48 +50,87 @@ object IrCodeDatabase {
     }
 
     /**
+     * Official LSB-first NEC Protocol raw pattern generator.
+     * Transmits Address, Address Inverse, Command, and Command Inverse (8 bits each, LSB-first).
+     */
+    fun necLsbToRawPattern(address: Int, command: Int): IntArray {
+        val list = mutableListOf<Int>()
+        list.add(9000)
+        list.add(4500)
+
+        fun addByteLsb(b: Int) {
+            for (bitIdx in 0..7) {
+                val bit = (b shr bitIdx) and 1
+                list.add(560)
+                if (bit == 1) {
+                    list.add(1690)
+                } else {
+                    list.add(560)
+                }
+            }
+        }
+
+        val addrLow = address and 0xFF
+        val addrHigh = (address shr 8) and 0xFF
+        val cmd = command and 0xFF
+
+        if ((address shr 8) == 0) {
+            addByteLsb(addrLow)
+            addByteLsb(addrLow xor 0xFF)
+        } else {
+            addByteLsb(addrLow)
+            addByteLsb(addrHigh)
+        }
+
+        addByteLsb(cmd)
+        addByteLsb(cmd xor 0xFF)
+
+        list.add(560)
+        return list.toIntArray()
+    }
+
+    /**
      * Generates a complete command map for CCT 3-Color Dimmable Lamps based on address header & variant.
      */
     fun getLampProtocolMapForVariant(addressHeader: Long, variantIndex: Int): Map<String, IntArray> {
         val map = mutableMapOf<String, IntArray>()
-        val base = if (addressHeader != 0L) addressHeader else 0x00FF0000L
 
         when (variantIndex) {
             1 -> { // Variant B: Lazada CCT Lamp
-                map["power_toggle"] = necToRawPattern(base or 0x12EDL)
-                map["color_temp_cycle"] = necToRawPattern(base or 0x1CE3L)
-                map["brightness_up"] = necToRawPattern(base or 0x18E7L)
-                map["brightness_down"] = necToRawPattern(base or 0x10EFL)
-                map["warm_white"] = necToRawPattern(base or 0x14EBL)
-                map["cool_white"] = necToRawPattern(base or 0x04FBL)
-                map["night_light"] = necToRawPattern(base or 0xA857L) // VERIFIED WORKING (0xA8)
+                map["power_toggle"] = necLsbToRawPattern(0x00, 0x12)
+                map["color_temp_cycle"] = necLsbToRawPattern(0x00, 0x1C)
+                map["brightness_up"] = necLsbToRawPattern(0x00, 0x18) // VERIFIED WORKING (0x18)
+                map["brightness_down"] = necLsbToRawPattern(0x00, 0x10)
+                map["warm_white"] = necLsbToRawPattern(0x00, 0x14)
+                map["cool_white"] = necLsbToRawPattern(0x00, 0x04)
+                map["night_light"] = necLsbToRawPattern(0x00, 0xA8) // VERIFIED WORKING (0xA8)
             }
             2 -> { // Variant C: CCT 21-Key Controller
-                map["power_toggle"] = necToRawPattern(base or 0xB24DL)
-                map["color_temp_cycle"] = necToRawPattern(base or 0x30CFL)
-                map["brightness_up"] = necToRawPattern(base or 0x906FL)
-                map["brightness_down"] = necToRawPattern(base or 0xA05FL)
-                map["warm_white"] = necToRawPattern(base or 0x50AFL)
-                map["cool_white"] = necToRawPattern(base or 0xD02FL)
-                map["night_light"] = necToRawPattern(base or 0xA857L) // VERIFIED WORKING (0xA8)
+                map["power_toggle"] = necLsbToRawPattern(0x00, 0xB2)
+                map["color_temp_cycle"] = necLsbToRawPattern(0x00, 0x30)
+                map["brightness_up"] = necLsbToRawPattern(0x00, 0x90)
+                map["brightness_down"] = necLsbToRawPattern(0x00, 0xA0)
+                map["warm_white"] = necLsbToRawPattern(0x00, 0x50)
+                map["cool_white"] = necLsbToRawPattern(0x00, 0xD0)
+                map["night_light"] = necLsbToRawPattern(0x00, 0xA8) // VERIFIED WORKING (0xA8)
             }
             3 -> { // Variant D: CCT Driver Pro
-                map["power_toggle"] = necToRawPattern(base or 0x0AF5L)
-                map["color_temp_cycle"] = necToRawPattern(base or 0x0CF3L)
-                map["brightness_up"] = necToRawPattern(base or 0x08F7L)
-                map["brightness_down"] = necToRawPattern(base or 0x8877L)
-                map["warm_white"] = necToRawPattern(base or 0x48B7L)
-                map["cool_white"] = necToRawPattern(base or 0x6897L)
-                map["night_light"] = necToRawPattern(base or 0xA857L) // VERIFIED WORKING (0xA8)
+                map["power_toggle"] = necLsbToRawPattern(0x00, 0x0A)
+                map["color_temp_cycle"] = necLsbToRawPattern(0x00, 0x0C)
+                map["brightness_up"] = necLsbToRawPattern(0x00, 0x08)
+                map["brightness_down"] = necLsbToRawPattern(0x00, 0x88)
+                map["warm_white"] = necLsbToRawPattern(0x00, 0x48)
+                map["cool_white"] = necLsbToRawPattern(0x00, 0x68)
+                map["night_light"] = necLsbToRawPattern(0x00, 0xA8) // VERIFIED WORKING (0xA8)
             }
             else -> { // Variant A: Standard 24-Key CCT
-                map["power_toggle"] = necToRawPattern(base or 0x02FDL)
-                map["color_temp_cycle"] = necToRawPattern(base or 0xB04FL)
-                map["brightness_up"] = necToRawPattern(base or 0x629DL)
-                map["brightness_down"] = necToRawPattern(base or 0xA25DL)
-                map["warm_white"] = necToRawPattern(base or 0x22DDL)
-                map["cool_white"] = necToRawPattern(base or 0xC23DL)
-                map["night_light"] = necToRawPattern(base or 0xA857L) // VERIFIED WORKING (0xA8)
+                map["power_toggle"] = necLsbToRawPattern(0x00, 0x02)
+                map["color_temp_cycle"] = necLsbToRawPattern(0x00, 0xB0)
+                map["brightness_up"] = necLsbToRawPattern(0x00, 0x62)
+                map["brightness_down"] = necLsbToRawPattern(0x00, 0xA2)
+                map["warm_white"] = necLsbToRawPattern(0x00, 0x22)
+                map["cool_white"] = necLsbToRawPattern(0x00, 0xC2)
+                map["night_light"] = necLsbToRawPattern(0x00, 0xA8) // VERIFIED WORKING (0xA8)
             }
         }
         return map

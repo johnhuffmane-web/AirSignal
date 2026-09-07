@@ -79,7 +79,7 @@ class ControlActivity : AppCompatActivity() {
 
         val protocolSpinner = Spinner(this)
         val protocols = listOf(
-            "Protocol 2B: Lazada CCT Lamp (0x00FF - Recommended)",
+            "Protocol 2B: Lazada CCT Lamp (0x00FF - LSB Official)",
             "Protocol 2A: Standard 24-Key RGB (0x00FF)",
             "Protocol 2C: CCT 21-Key Controller (0x00FF)",
             "Protocol 2D: CCT Driver Pro (0x00FF)",
@@ -144,7 +144,7 @@ class ControlActivity : AppCompatActivity() {
 
         // Interactive Signal Fine-Tuner Matrix
         val matrixLabel = TextView(this).apply {
-            text = "Lazada CCT Signal Fine-Tuner Matrix:"
+            text = "Lazada CCT Signal Fine-Tuner Matrix (LSB Official):"
             setTypeface(null, Typeface.BOLD)
             setPadding(0, 20, 0, 8)
         }
@@ -158,28 +158,28 @@ class ControlActivity : AppCompatActivity() {
         container.addView(colorMatrixLabel)
 
         val colorCodes = listOf(
-            "Color Code 1 (0xB0)" to 0x00FFB04FL,
-            "Color Code 2 (0x1C)" to 0x00FF1CE3L,
-            "Color Code 3 (0x0C)" to 0x00FF0CF3L,
-            "Color Code 4 (0x20)" to 0x00FF20DFL,
-            "Color Code 5 (0x48)" to 0x00FF48B7L,
-            "Color Code 6 (0x68)" to 0x00FF6897L,
-            "Color Code 7 (0x88)" to 0x00FF8877L,
-            "Color Code 8 (0xE8)" to 0x00FFE817L,
-            "Color Code 9 (0x28)" to 0x00FF28D7L,
-            "Color Code 10 (0x14)" to 0x00FF14EBL,
-            "Color Code 11 (0x04)" to 0x00FF04FBL
+            "Color Code 1 (0xB0)" to 0xB0,
+            "Color Code 2 (0x1C)" to 0x1C,
+            "Color Code 3 (0x0C)" to 0x0C,
+            "Color Code 4 (0x20)" to 0x20,
+            "Color Code 5 (0x48)" to 0x48,
+            "Color Code 6 (0x68)" to 0x68,
+            "Color Code 7 (0x88)" to 0x88,
+            "Color Code 8 (0xE8)" to 0xE8,
+            "Color Code 9 (0x28)" to 0x28,
+            "Color Code 10 (0x14)" to 0x14,
+            "Color Code 11 (0x04)" to 0x04
         )
 
-        for ((name, code) in colorCodes) {
+        for ((name, cmdByte) in colorCodes) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             val testBtn = Button(this).apply {
                 text = name
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f).apply { marginEnd = 8 }
                 setOnClickListener {
-                    val raw = IrCodeDatabase.necToRawPattern(code)
+                    val raw = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
                     irRepository.transmit(38000, raw)
-                    Toast.makeText(this@ControlActivity, "Transmitted $name", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ControlActivity, "Transmitted $name (LSB)", Toast.LENGTH_SHORT).show()
                 }
             }
             val setBtn = Button(this).apply {
@@ -187,7 +187,7 @@ class ControlActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 setOnClickListener {
                     val updated = appliance.commandMap.toMutableMap()
-                    updated["color_temp_cycle"] = IrCodeDatabase.necToRawPattern(code)
+                    updated["color_temp_cycle"] = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
                     appliance = appliance.copy(commandMap = updated)
                     updateDeviceStorage(appliance)
                     Toast.makeText(this@ControlActivity, "Saved $name as Color Switch!", Toast.LENGTH_SHORT).show()
@@ -206,26 +206,26 @@ class ControlActivity : AppCompatActivity() {
         container.addView(powerMatrixLabel)
 
         val powerCodes = listOf(
-            "Power Code 1 (0x02)" to 0x00FF02FDL,
-            "Power Code 2 (0x12)" to 0x00FF12EDL,
-            "Power Code 3 (0x00)" to 0x00FF00FFL,
-            "Power Code 4 (0x0A)" to 0x00FF0AF5L,
-            "Power Code 5 (0x01)" to 0x00FF01FEL,
-            "Power Code 6 (0x03)" to 0x00FF03FCL,
-            "Power Code 7 (0x1A)" to 0x00FF1AE5L,
-            "Power Code 8 (0x1E)" to 0x00FF1EE1L,
-            "Power Code 9 (0x40)" to 0x00FF40BFL
+            "Power Code 1 (0x02)" to 0x02,
+            "Power Code 2 (0x12)" to 0x12,
+            "Power Code 3 (0x00)" to 0x00,
+            "Power Code 4 (0x0A)" to 0x0A,
+            "Power Code 5 (0x01)" to 0x01,
+            "Power Code 6 (0x03)" to 0x03,
+            "Power Code 7 (0x1A)" to 0x1A,
+            "Power Code 8 (0x1E)" to 0x1E,
+            "Power Code 9 (0x40)" to 0x40
         )
 
-        for ((name, code) in powerCodes) {
+        for ((name, cmdByte) in powerCodes) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             val testBtn = Button(this).apply {
                 text = name
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f).apply { marginEnd = 8 }
                 setOnClickListener {
-                    val raw = IrCodeDatabase.necToRawPattern(code)
+                    val raw = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
                     irRepository.transmit(38000, raw)
-                    Toast.makeText(this@ControlActivity, "Transmitted $name", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ControlActivity, "Transmitted $name (LSB)", Toast.LENGTH_SHORT).show()
                 }
             }
             val setBtn = Button(this).apply {
@@ -233,7 +233,7 @@ class ControlActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 setOnClickListener {
                     val updated = appliance.commandMap.toMutableMap()
-                    updated["power_toggle"] = IrCodeDatabase.necToRawPattern(code)
+                    updated["power_toggle"] = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
                     appliance = appliance.copy(commandMap = updated)
                     updateDeviceStorage(appliance)
                     Toast.makeText(this@ControlActivity, "Saved $name as Power Code!", Toast.LENGTH_SHORT).show()
@@ -252,21 +252,21 @@ class ControlActivity : AppCompatActivity() {
         container.addView(dimMatrixLabel)
 
         val dimCodes = listOf(
-            "Dimmer Code 1 (0x10)" to 0x00FF10EFL,
-            "Dimmer Code 2 (0x08)" to 0x00FF08F7L,
-            "Dimmer Code 3 (0xA0)" to 0x00FFA05FL,
-            "Dimmer Code 4 (0x80)" to 0x00FF807FL
+            "Dimmer Code 1 (0x10)" to 0x10,
+            "Dimmer Code 2 (0x08)" to 0x08,
+            "Dimmer Code 3 (0xA0)" to 0xA0,
+            "Dimmer Code 4 (0x80)" to 0x80
         )
 
-        for ((name, code) in dimCodes) {
+        for ((name, cmdByte) in dimCodes) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             val testBtn = Button(this).apply {
                 text = name
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f).apply { marginEnd = 8 }
                 setOnClickListener {
-                    val raw = IrCodeDatabase.necToRawPattern(code)
+                    val raw = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
                     irRepository.transmit(38000, raw)
-                    Toast.makeText(this@ControlActivity, "Transmitted $name", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ControlActivity, "Transmitted $name (LSB)", Toast.LENGTH_SHORT).show()
                 }
             }
             val setBtn = Button(this).apply {
@@ -274,7 +274,7 @@ class ControlActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 setOnClickListener {
                     val updated = appliance.commandMap.toMutableMap()
-                    updated["brightness_down"] = IrCodeDatabase.necToRawPattern(code)
+                    updated["brightness_down"] = IrCodeDatabase.necLsbToRawPattern(0x00, cmdByte)
                     appliance = appliance.copy(commandMap = updated)
                     updateDeviceStorage(appliance)
                     Toast.makeText(this@ControlActivity, "Saved $name as Dimmer!", Toast.LENGTH_SHORT).show()
